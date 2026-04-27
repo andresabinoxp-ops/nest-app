@@ -2232,6 +2232,16 @@ export default function FinanceApp() {
               );
             })}
 
+            {/* Re-trigger: Smart Split is always one tap away */}
+            {smartStep === null && allocated > 0 && (
+              <button
+                onClick={() => { setSmartStep('q1'); setSmartAnswers({}); setSmartResult(null); }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', background: 'transparent', border: `1px dashed ${C.line}`, borderRadius: 12, padding: '12px 16px', cursor: 'pointer', fontFamily: fontSans, fontSize: 12, fontWeight: 600, color: C.accent, marginBottom: 12 }}
+              >
+                <Sparkles size={13} /> {t.allocate.smartCard.cta}
+              </button>
+            )}
+
             {/* Summary + save */}
             <div style={s.card}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
