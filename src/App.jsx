@@ -124,6 +124,9 @@ const copy = {
       starterTitle: 'Quick start',
       moneyFlowEmpty: 'Add items below to see how your money is split.',
       ofIncome: 'of income',
+      benchmarkPick: 'Compare to',
+      benchmarkNone: 'None',
+      benchmarkLabels: { housing: 'Housing', utilities: 'Utilities', groceries: 'Groceries', transport: 'Transport', lifestyle: 'Lifestyle', savings: 'Savings', emergency: 'Emergency', investments: 'Investments', debt: 'Debt' },
       planHint: 'Nest is a planner. Set how your money flows each month.',
       saved: 'Saved for',
       smartCard: {
@@ -382,6 +385,9 @@ const copy = {
       starterTitle: 'Início rápido',
       moneyFlowEmpty: 'Adicione itens abaixo para ver a divisão do seu dinheiro.',
       ofIncome: 'da renda',
+      benchmarkPick: 'Comparar com',
+      benchmarkNone: 'Nenhum',
+      benchmarkLabels: { housing: 'Moradia', utilities: 'Contas', groceries: 'Mercado', transport: 'Transporte', lifestyle: 'Lazer', savings: 'Poupança', emergency: 'Reserva', investments: 'Investimentos', debt: 'Dívidas' },
       planHint: 'O Nest é um planejador. Defina como seu dinheiro flui a cada mês.',
       saved: 'Salvo em',
       smartCard: {
@@ -629,6 +635,16 @@ const DEFAULT_ITEMS = {
     { pillar: 'wealth', name: 'Poupança', icon: 'piggy', benchmarkKey: 'savings' },
     { pillar: 'wealth', name: 'Investimentos', icon: 'line', benchmarkKey: 'investments' },
   ],
+};
+
+// Benchmarks available per pillar. Used by the inline-edit picker so an item
+// in the Wealth pillar can't accidentally be compared against the Housing
+// benchmark, etc.
+const PILLAR_BENCHMARKS = {
+  needs: ['housing', 'utilities', 'groceries', 'transport'],
+  wants: ['lifestyle'],
+  wealth: ['savings', 'emergency', 'investments'],
+  debt: ['debt'],
 };
 
 // Suggestion chips used to seed an empty pillar.
@@ -2179,7 +2195,27 @@ export default function FinanceApp() {
 
                         {isEditingItem && (
                           <div style={{ paddingLeft: 36, marginTop: 10 }}>
-                            <input style={{ ...s.input, padding: '8px 12px', fontSize: 16, marginBottom: 8 }} value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} />
+                            <input style={{ ...s.input, padding: '8px 12px', fontSize: 16, marginBottom: 10 }} value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} />
+                            {(PILLAR_BENCHMARKS[pillarKey] || []).length > 0 && (
+                              <div style={{ marginBottom: 10 }}>
+                                <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.allocate.benchmarkPick}</div>
+                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                  {[null, ...PILLAR_BENCHMARKS[pillarKey]].map(key => {
+                                    const selected = (item.benchmarkKey || null) === key;
+                                    const label = key == null ? t.allocate.benchmarkNone : t.allocate.benchmarkLabels[key];
+                                    return (
+                                      <button
+                                        key={key || 'none'}
+                                        onClick={() => updateItem(item.id, 'benchmarkKey', key)}
+                                        style={{ padding: '6px 10px', border: 'none', borderRadius: 999, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600, background: selected ? C.accent : C.surfaceAlt, color: selected ? C.surface : C.inkSoft }}
+                                      >
+                                        {label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                             <button onClick={() => { removeItem(item.id); setEditingItemId(null); }} style={{ background: 'transparent', border: `1px solid ${C.lineSoft}`, color: C.red, padding: '8px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: fontSans, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                               <Trash2 size={13} /> {t.common.delete}
                             </button>
