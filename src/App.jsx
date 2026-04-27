@@ -2005,8 +2005,8 @@ export default function FinanceApp() {
               </div>
             )}
 
-            {/* Setup strip (only when no items yet) */}
-            {smartStep === null && items.length === 0 && (
+            {/* Setup strip (only when nothing has been allocated yet) */}
+            {smartStep === null && allocated === 0 && (
               <div style={s.card}>
                 <div style={{ ...s.cardLabel, marginBottom: 10 }}>{t.allocate.starterTitle}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
