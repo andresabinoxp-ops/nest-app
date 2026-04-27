@@ -223,6 +223,8 @@ const copy = {
       history: 'History',
       noHistory: 'No transactions yet. Use the move button to log a deposit or withdrawal.',
       removeEntryQ: 'Remove this entry?',
+      showAll: (n) => `Show all (${n})`,
+      collapse: 'Collapse',
     },
     forecast: {
       title: 'Forecast',
@@ -471,6 +473,8 @@ const copy = {
       history: 'Histórico',
       noHistory: 'Sem transações ainda. Use o botão mover para registrar um depósito ou retirada.',
       removeEntryQ: 'Remover este registro?',
+      showAll: (n) => `Ver tudo (${n})`,
+      collapse: 'Recolher',
     },
     forecast: {
       title: 'Previsão',
@@ -1015,6 +1019,7 @@ export default function FinanceApp() {
   const [txMode, setTxMode] = useState('deposit');
   const [txAmount, setTxAmount] = useState('');
   const [confirmRemove, setConfirmRemove] = useState(null); // { bucketId, idx }
+  const [expandedHistoryIds, setExpandedHistoryIds] = useState([]);
   const [editingGoalId, setEditingGoalId] = useState(null);
   const [scenarioExtra, setScenarioExtra] = useState(0);
 
@@ -2430,12 +2435,16 @@ export default function FinanceApp() {
                           <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.history}</div>
                           {(b.history || []).length === 0 ? (
                             <div style={{ fontSize: 11, color: C.inkMuted, lineHeight: 1.4, fontStyle: 'italic' }}>{t.wealth.noHistory}</div>
-                          ) : (
+                          ) : (() => {
+                            const isHistoryExpanded = expandedHistoryIds.includes(b.id);
+                            const visible = isHistoryExpanded ? b.history.slice().reverse() : b.history.slice(-10).reverse();
+                            return (
                             <div>
-                              {b.history.slice(-10).reverse().map((h, displayIdx) => {
+                              <div style={{ maxHeight: isHistoryExpanded && b.history.length > 10 ? 360 : 'none', overflowY: isHistoryExpanded && b.history.length > 10 ? 'auto' : 'visible' }}>
+                              {visible.map((h, displayIdx) => {
                                 const originalIdx = b.history.length - 1 - displayIdx;
                                 const isConfirming = confirmRemove && confirmRemove.bucketId === b.id && confirmRemove.idx === originalIdx;
-                                const isLast = displayIdx === Math.min(b.history.length, 10) - 1;
+                                const isLast = displayIdx === visible.length - 1;
                                 return (
                                   <div key={originalIdx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 0', borderBottom: isLast ? 'none' : `1px solid ${C.lineSoft}` }}>
                                     {isConfirming ? (
@@ -2461,8 +2470,18 @@ export default function FinanceApp() {
                                   </div>
                                 );
                               })}
+                              </div>
+                              {b.history.length > 10 && (
+                                <button
+                                  onClick={() => setExpandedHistoryIds(prev => prev.includes(b.id) ? prev.filter(x => x !== b.id) : [...prev, b.id])}
+                                  style={{ background: 'transparent', border: 'none', color: C.accent, padding: '8px 0 0', cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
+                                >
+                                  {isHistoryExpanded ? t.wealth.collapse : t.wealth.showAll(b.history.length)}
+                                </button>
+                              )}
                             </div>
-                          )}
+                            );
+                          })()}
                         </div>
                         <button onClick={() => removeBucket(b.id)} style={{ background: 'transparent', border: `1px solid ${C.lineSoft}`, color: C.red, padding: '8px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: fontSans, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           <Trash2 size={13} /> {t.common.delete}
