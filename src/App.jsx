@@ -1184,8 +1184,8 @@ export default function FinanceApp() {
 
     primaryBtn: { background: C.accent, color: C.surface, border: 'none', padding: '12px 20px', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: fontSans, display: 'inline-flex', alignItems: 'center', gap: 6 },
     ghostBtn: { background: 'transparent', border: 'none', color: C.inkSoft, padding: '6px 10px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: fontSans, display: 'inline-flex', alignItems: 'center', gap: 4 },
-    input: { width: '100%', padding: '12px 14px', fontSize: 15, fontFamily: fontSans, border: `1px solid ${C.line}`, borderRadius: 12, background: C.surfaceAlt, boxSizing: 'border-box', color: C.ink, outline: 'none' },
-    inputNum: { padding: '9px 12px', fontSize: 14, fontFamily: fontSans, fontVariantNumeric: 'tabular-nums', fontWeight: 600, border: `1px solid ${C.line}`, borderRadius: 10, background: C.surfaceAlt, textAlign: 'right', width: 100, outline: 'none', color: C.ink, boxSizing: 'border-box' },
+    input: { width: '100%', padding: '12px 14px', fontSize: 16, fontFamily: fontSans, border: `1px solid ${C.line}`, borderRadius: 12, background: C.surfaceAlt, boxSizing: 'border-box', color: C.ink, outline: 'none' },
+    inputNum: { padding: '9px 12px', fontSize: 16, fontFamily: fontSans, fontVariantNumeric: 'tabular-nums', fontWeight: 600, border: `1px solid ${C.line}`, borderRadius: 10, background: C.surfaceAlt, textAlign: 'right', width: 100, outline: 'none', color: C.ink, boxSizing: 'border-box' },
 
     progressTrack: { height: 6, background: C.surfaceAlt, borderRadius: 3, overflow: 'hidden' },
     progressFill: (pct, color = C.accent) => ({ height: '100%', width: `${Math.min(100, Math.max(0, pct))}%`, background: color, borderRadius: 3, transition: 'width 0.4s' }),
@@ -1733,7 +1733,7 @@ export default function FinanceApp() {
                       <div key={item.id} style={s.itemRow}>
                         <div style={s.rowIconBox}>{renderIcon(item.icon, 14, C.accent, 2)}</div>
                         {editingAllocate ? (
-                          <input style={{ ...s.input, flex: 1, padding: '8px 12px', fontSize: 14, minWidth: 80 }} value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} />
+                          <input style={{ ...s.input, flex: 1, padding: '8px 12px', fontSize: 16, minWidth: 80 }} value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} />
                         ) : (
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1809,7 +1809,7 @@ export default function FinanceApp() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                     <div style={s.rowIconBox}>{renderIcon(g.icon, 16, C.accent, 2)}</div>
                     {isEditing ? (
-                      <input style={{ ...s.input, flex: 1, padding: '8px 12px', fontSize: 15 }} value={g.name} onChange={(e) => updateGoal(g.id, 'name', e.target.value)} />
+                      <input style={{ ...s.input, flex: 1, padding: '8px 12px', fontSize: 16 }} value={g.name} onChange={(e) => updateGoal(g.id, 'name', e.target.value)} />
                     ) : (
                       <div style={{ flex: 1, fontSize: 16, fontWeight: 600 }}>{g.name}</div>
                     )}
@@ -1913,7 +1913,7 @@ export default function FinanceApp() {
                       {b.name.charAt(0).toUpperCase()}
                     </div>
                     {editingWealth ? (
-                      <input style={{ ...s.input, flex: 1, padding: '8px 12px', fontSize: 14 }} value={b.name} onChange={(e) => updateBucket(b.id, 'name', e.target.value)} />
+                      <input style={{ ...s.input, flex: 1, padding: '8px 12px', fontSize: 16 }} value={b.name} onChange={(e) => updateBucket(b.id, 'name', e.target.value)} />
                     ) : (
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 15, fontWeight: 500 }}>{b.name}</div>
