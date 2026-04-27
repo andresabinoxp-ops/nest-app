@@ -720,6 +720,7 @@ const TYPE_RISK = { cash: 1, bonds: 2, pension: 2, reits: 3, other: 3, stocks: 4
 // the user has enough buckets that scanning becomes a chore.
 const CATEGORY_OF = { stocks: 'equities', reits: 'equities', bonds: 'fixed', pension: 'fixed', cash: 'cash', crypto: 'alternatives', other: 'alternatives' };
 const CATEGORY_ORDER = ['equities', 'fixed', 'cash', 'alternatives'];
+const CATEGORY_COLORS = { equities: '#2E8B88', fixed: '#88A6A4', cash: '#5CAB7D', alternatives: '#D4A35C' };
 const GROUPING_THRESHOLD = 5;
 
 // Weighted-average risk from a shares-by-type map.
@@ -2183,15 +2184,15 @@ export default function FinanceApp() {
                         {b.name.charAt(0).toUpperCase()}
                       </div>
                       <div style={{ flex: 1, minWidth: 0, marginLeft: 4 }}>
-                        <div style={{ fontSize: 15, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</span>
+                        <div style={{ fontSize: 15, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
+                        <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           {b.account && (
-                            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 4, background: color + '20', color, flexShrink: 0 }}>{b.account}</span>
+                            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 4, background: color + '20', color }}>{b.account}</span>
                           )}
+                          <span>{t.wealth.monthly} {fmt(b.monthly, t)} · {b.growth}%{Number(b.dividend) > 0 ? ` + ${b.dividend}% div` : ''}/yr</span>
                         </div>
-                        <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 2 }}>{t.wealth.monthly} {fmt(b.monthly, t)} · {b.growth}%{Number(b.dividend) > 0 ? ` + ${b.dividend}% div` : ''}/yr</div>
                       </div>
-                      <input type="number" inputMode="decimal" style={s.inputNum} value={b.current || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'current', e.target.value)} />
+                      <input type="number" inputMode="decimal" style={{ ...s.inputNum, width: 92 }} value={b.current || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'current', e.target.value)} />
                       <button onClick={() => { setTxBucketId(isTx ? null : b.id); setTxMode('deposit'); setTxAmount(''); }} style={{ background: isTx ? color + '20' : 'transparent', border: 'none', cursor: 'pointer', color: isTx ? color : C.inkMuted, padding: 6, borderRadius: 8, display: 'flex', alignItems: 'center' }} aria-label={t.wealth.move}>
                         <ArrowDownUp size={14} />
                       </button>
@@ -2271,11 +2272,12 @@ export default function FinanceApp() {
                     const items = buckets.filter(b => CATEGORY_OF[b.type] === cat);
                     if (items.length === 0) return null;
                     const subtotal = items.reduce((sum, b) => sum + (Number(b.current) || 0), 0);
+                    const catColor = CATEGORY_COLORS[cat];
                     return (
                       <div key={cat}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0 6px', marginTop: 8, borderTop: `1px solid ${C.line}` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0 6px', marginTop: 8, borderTop: `2px solid ${catColor}` }}>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: C.ink, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{t.wealth.categories[cat]}</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: catColor, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{t.wealth.categories[cat]}</span>
                             <span style={{ fontSize: 10, color: C.inkMuted }}>{t.wealth.bucketCount(items.length)}</span>
                           </div>
                           <span style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmtShort(subtotal, t)}</span>
