@@ -18,11 +18,23 @@ const copy = {
     month: { names: ['January','February','March','April','May','June','July','August','September','October','November','December'] },
     onboarding: {
       welcome: {
-        eyebrow: 'Welcome',
-        title: 'Your money,',
-        titleBold: 'beautifully simple.',
-        sub: 'Plan. Grow. Reflect monthly. No daily tracking.',
+        eyebrow: 'Welcome to Nest',
+        title: 'Your money plan,',
+        titleBold: 'in five taps.',
+        sub: 'A simple monthly rhythm. No daily tracking.',
         cta: 'Get started',
+        values: {
+          plan: { title: 'Plan', sub: 'Allocate income across pillars' },
+          grow: { title: 'Grow', sub: 'Track wealth and project forward' },
+          reflect: { title: 'Reflect', sub: 'Check in once a month' },
+        },
+        privacy: 'Stays on your device. No account needed.',
+      },
+      income: {
+        title: 'What\'s your',
+        titleBold: 'monthly income?',
+        sub: 'We\'ll plan around this number. You can change it anytime.',
+        placeholder: 'e.g. 3,000',
       },
       country: {
         title: 'Where do you',
@@ -297,11 +309,23 @@ const copy = {
     month: { names: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'] },
     onboarding: {
       welcome: {
-        eyebrow: 'Bem-vindo',
-        title: 'Seu dinheiro,',
-        titleBold: 'simples e bonito.',
-        sub: 'Planeje. Cresça. Reflita mensalmente. Sem rastreio diário.',
+        eyebrow: 'Bem-vindo ao Nest',
+        title: 'Seu plano financeiro,',
+        titleBold: 'em cinco toques.',
+        sub: 'Um ritmo mensal simples. Sem rastreio diário.',
         cta: 'Começar',
+        values: {
+          plan: { title: 'Planejar', sub: 'Aloque sua renda nos pilares' },
+          grow: { title: 'Crescer', sub: 'Acompanhe e projete seu patrimônio' },
+          reflect: { title: 'Refletir', sub: 'Faça um check-in mensal' },
+        },
+        privacy: 'Tudo fica no seu aparelho. Sem cadastro.',
+      },
+      income: {
+        title: 'Qual é sua',
+        titleBold: 'renda mensal?',
+        sub: 'Vamos planejar com base nesse número. Pode mudar quando quiser.',
+        placeholder: 'ex: 3.000',
       },
       country: {
         title: 'Onde você',
@@ -1658,14 +1682,15 @@ export default function FinanceApp() {
     const canAdvance = () => {
       if (onboardStep === 0) return true;
       if (onboardStep === 1) return country !== null;
-      if (onboardStep === 2) return mainGoal !== null;
-      if (onboardStep === 3) return investorProfile !== null;
-      if (onboardStep === 4) return true;
+      if (onboardStep === 2) return salary > 0;
+      if (onboardStep === 3) return mainGoal !== null;
+      if (onboardStep === 4) return investorProfile !== null;
+      if (onboardStep === 5) return true;
       return false;
     };
 
     const handleNext = () => {
-      if (onboardStep < 4) setOnboardStep(onboardStep + 1);
+      if (onboardStep < 5) setOnboardStep(onboardStep + 1);
       else finishOnboarding();
     };
 
@@ -1673,26 +1698,43 @@ export default function FinanceApp() {
       <div style={s.app}>
         <div style={s.onboardMain}>
           <div style={s.dots}>
-            {[0,1,2,3,4].map(i => <div key={i} style={s.dot(onboardStep === i)} />)}
+            {[0,1,2,3,4,5].map(i => <div key={i} style={s.dot(onboardStep === i)} />)}
           </div>
 
           {onboardStep === 0 && (
             <>
-              <div style={s.onboardEyebrow}>● {t.onboarding.welcome.eyebrow}</div>
-              <h1 style={{ ...s.onboardTitle, textAlign: 'center', fontSize: 36, marginTop: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 18 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 11, background: C.accent, color: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18 }}>N</div>
+                <span style={{ fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>Nest</span>
+              </div>
+              <div style={s.onboardEyebrow}>{t.onboarding.welcome.eyebrow}</div>
+              <h1 style={{ ...s.onboardTitle, textAlign: 'center', fontSize: 32, marginTop: 12 }}>
                 {t.onboarding.welcome.title}<br />
                 <span style={s.onboardTitleBold}>{t.onboarding.welcome.titleBold}</span>
               </h1>
               <p style={{ ...s.onboardSub, textAlign: 'center', maxWidth: 360, margin: '0 auto 24px' }}>
                 {t.onboarding.welcome.sub}
               </p>
-              <div style={{ ...s.heroCard, marginTop: 16 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 10, opacity: 0.85 }}>Preview</div>
-                <div style={{ fontSize: 26, fontWeight: 700 }}>£3,000</div>
-                <div style={{ height: 6, background: 'rgba(255,255,255,0.25)', borderRadius: 3, marginTop: 12, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: '80%', background: C.surface }} />
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[
+                  { key: 'plan', icon: Wallet, color: '#3B82F6' },
+                  { key: 'grow', icon: TrendingUp, color: C.accent },
+                  { key: 'reflect', icon: Heart, color: '#A855F7' },
+                ].map(({ key, icon: Icon, color }) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: C.surface, border: `1px solid ${C.lineSoft}`, borderRadius: 14 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: color + '15', color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Icon size={16} strokeWidth={2} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{t.onboarding.welcome.values[key].title}</div>
+                      <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 2 }}>{t.onboarding.welcome.values[key].sub}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
+              <p style={{ fontSize: 11, color: C.inkMuted, textAlign: 'center', marginTop: 18, marginBottom: 0 }}>
+                {t.onboarding.welcome.privacy}
+              </p>
             </>
           )}
 
@@ -1721,6 +1763,25 @@ export default function FinanceApp() {
           {onboardStep === 2 && (
             <>
               <h1 style={s.onboardTitle}>
+                {t.onboarding.income.title}{' '}
+                <span style={s.onboardTitleBold}>{t.onboarding.income.titleBold}</span>
+              </h1>
+              <p style={s.onboardSub}>{t.onboarding.income.sub}</p>
+              <div style={{ ...s.heroCard, marginTop: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.85, marginBottom: 12 }}>
+                  {t.allocate.income}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                  <span style={{ fontSize: 26, opacity: 0.7 }}>{(country === 'br') ? 'R$' : '£'}</span>
+                  <MoneyInput value={incomeSources[0]?.amount || 0} t={t} style={{ flex: 1, fontFamily: fontSans, fontSize: 36, fontWeight: 700, padding: 0, border: 'none', background: 'transparent', color: C.surface, outline: 'none', width: '100%', minWidth: 0, letterSpacing: '-0.02em' }} placeholder={t.onboarding.income.placeholder} onChange={(v) => updateIncomeSource(incomeSources[0]?.id || 'main', 'amount', v)} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {onboardStep === 3 && (
+            <>
+              <h1 style={s.onboardTitle}>
                 {t.onboarding.goal.title}{' '}
                 <span style={s.onboardTitleBold}>{t.onboarding.goal.titleBold}</span>
               </h1>
@@ -1736,27 +1797,51 @@ export default function FinanceApp() {
             </>
           )}
 
-          {onboardStep === 3 && (
+          {onboardStep === 4 && (
             <>
               <h1 style={s.onboardTitle}>
                 {t.onboarding.profile.title}{' '}
                 <span style={s.onboardTitleBold}>{t.onboarding.profile.titleBold}</span>
               </h1>
               <p style={s.onboardSub}>{t.onboarding.profile.sub}</p>
-              {t.onboarding.profile.options.map(opt => (
-                <div key={opt.v} style={s.optionCard(investorProfile === opt.v)} onClick={() => setInvestorProfile(opt.v)}>
-                  <div style={s.optionIconBox(investorProfile === opt.v)}>{renderIcon(opt.icon, 16, investorProfile === opt.v ? C.surface : C.inkSoft, 2)}</div>
-                  <div style={s.optionLabel}>
-                    <div style={s.optionLabelMain}>{opt.l}</div>
-                    <div style={s.optionLabelSub}>{opt.sub}</div>
+              {t.onboarding.profile.options.map(opt => {
+                const profileBuckets = (PROFILE_BUCKETS[opt.v] && PROFILE_BUCKETS[opt.v][country]) || [];
+                const totalShare = profileBuckets.reduce((sum, b) => sum + b.share, 0) || 1;
+                const sel = investorProfile === opt.v;
+                return (
+                  <div key={opt.v} style={{ ...s.optionCard(sel), alignItems: 'flex-start', flexDirection: 'column', gap: 0, padding: 14 }} onClick={() => setInvestorProfile(opt.v)}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
+                      <div style={s.optionIconBox(sel)}>{renderIcon(opt.icon, 16, sel ? C.surface : C.inkSoft, 2)}</div>
+                      <div style={{ ...s.optionLabel, flex: 1 }}>
+                        <div style={s.optionLabelMain}>{opt.l}</div>
+                        <div style={s.optionLabelSub}>{opt.sub}</div>
+                      </div>
+                      <div style={s.optionCheck(sel)}>{sel && <Check size={12} color={C.surface} strokeWidth={3} />}</div>
+                    </div>
+                    {profileBuckets.length > 0 && (
+                      <div style={{ width: '100%', marginTop: 12, paddingLeft: 48 }}>
+                        <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: C.lineSoft }}>
+                          {profileBuckets.map((b, i) => (
+                            <div key={i} style={{ width: `${(b.share / totalShare) * 100}%`, background: BUCKET_COLORS[b.type] || C.inkMuted }} />
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6, fontSize: 10, color: C.inkMuted }}>
+                          {profileBuckets.map((b, i) => (
+                            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ width: 7, height: 7, borderRadius: 2, background: BUCKET_COLORS[b.type] || C.inkMuted }} />
+                              {b.name} {Math.round(b.share * 100)}%
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div style={s.optionCheck(investorProfile === opt.v)}>{investorProfile === opt.v && <Check size={12} color={C.surface} strokeWidth={3} />}</div>
-                </div>
-              ))}
+                );
+              })}
             </>
           )}
 
-          {onboardStep === 4 && (
+          {onboardStep === 5 && (
             <>
               <h1 style={s.onboardTitle}>
                 {t.onboarding.saveFor.title}{' '}
@@ -1781,7 +1866,7 @@ export default function FinanceApp() {
           <button style={s.ctaBtn(!canAdvance())} onClick={handleNext} disabled={!canAdvance()}>
             {t.onboarding.cta} <ArrowRight size={16} />
           </button>
-          {onboardStep === 4 && (
+          {onboardStep === 5 && (
             <button style={s.skipBtn} onClick={finishOnboarding}>{t.onboarding.saveFor.skip}</button>
           )}
           <div style={{ textAlign: 'center', marginTop: 8 }}>
