@@ -143,6 +143,8 @@ const copy = {
       oneOff: 'One-off this month',
       oneOffTag: 'one-off',
       ofTarget: 'of target',
+      addSource: 'Add another income source',
+      totalIncome: 'Total income',
       planHint: 'Nest is a planner. Set how your money flows each month.',
       saved: 'Saved for',
       smartCard: {
@@ -420,6 +422,8 @@ const copy = {
       oneOff: 'Só este mês',
       oneOffTag: 'pontual',
       ofTarget: 'do alvo',
+      addSource: 'Adicionar outra fonte de renda',
+      totalIncome: 'Renda total',
       planHint: 'O Nest é um planejador. Defina como seu dinheiro flui a cada mês.',
       saved: 'Salvo em',
       smartCard: {
@@ -1129,7 +1133,28 @@ export default function FinanceApp() {
   const [saveForPicks, setSaveForPicks] = useState(saved?.saveForPicks || []);
 
   // Core state
-  const [salary, setSalary] = useState(saved?.salary ?? 3000);
+  // Income sources. Migrated from the legacy single-salary field on first
+  // load. Effective salary is the sum of these sources.
+  const [incomeSources, setIncomeSources] = useState(() => {
+    if (saved?.incomeSources && saved.incomeSources.length > 0) return saved.incomeSources;
+    return [{ id: 'main', name: 'Salary', amount: saved?.salary ?? 3000 }];
+  });
+  const salary = useMemo(() => incomeSources.reduce((sum, s) => sum + (Number(s.amount) || 0), 0), [incomeSources]);
+  const setSalary = (v) => {
+    const n = Number(v) || 0;
+    setIncomeSources(prev => prev.length === 1
+      ? [{ ...prev[0], amount: n }]
+      : [{ id: 'main', name: 'Salary', amount: n }]);
+  };
+  const addIncomeSource = () => {
+    setIncomeSources(prev => [...prev, { id: Math.random().toString(36), name: lang === 'pt' ? 'Renda extra' : 'Side income', amount: 0 }]);
+  };
+  const updateIncomeSource = (id, field, value) => {
+    setIncomeSources(prev => prev.map(s => s.id === id ? { ...s, [field]: field === 'amount' ? (value === '' ? 0 : Number(value)) : value } : s));
+  };
+  const removeIncomeSource = (id) => {
+    setIncomeSources(prev => prev.length <= 1 ? prev : prev.filter(s => s.id !== id));
+  };
   const [items, setItems] = useState(saved?.items || []);
   const [buckets, setBuckets] = useState(saved?.buckets || []);
   const [goals, setGoals] = useState(saved?.goals || []);
@@ -1192,12 +1217,12 @@ export default function FinanceApp() {
     saveState({
       lang, phase, onboardStep,
       country, mainGoal, investorProfile, saveForPicks,
-      salary, items, buckets, goals,
+      salary, incomeSources, items, buckets, goals,
       snapshots, lastCheckIn, checkInStreak,
       targetSplitPct, pillarTargets,
     });
   }, [lang, phase, onboardStep, country, mainGoal, investorProfile, saveForPicks,
-      salary, items, buckets, goals, snapshots, lastCheckIn, checkInStreak, targetSplitPct, pillarTargets]);
+      salary, incomeSources, items, buckets, goals, snapshots, lastCheckIn, checkInStreak, targetSplitPct, pillarTargets]);
 
   // ==================== DERIVED ====================
   const allocated = useMemo(() => items.reduce((sum, c) => sum + (Number(c.amount) || 0), 0), [items]);
@@ -2047,11 +2072,34 @@ export default function FinanceApp() {
             </div>
 
             <div style={s.heroCard}>
-              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.85, marginBottom: 10 }}>{t.allocate.income}</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontSize: 24, opacity: 0.7 }}>{t.currencySymbol}</span>
-                <MoneyInput value={salary} t={t} style={{ flex: 1, fontFamily: fontSans, fontSize: 32, fontWeight: 700, padding: 0, border: 'none', background: 'transparent', color: C.surface, outline: 'none', width: '100%', minWidth: 0, letterSpacing: '-0.02em' }} onChange={(v) => setSalary(v)} />
-              </div>
+              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.85, marginBottom: 10 }}>{incomeSources.length > 1 ? t.allocate.totalIncome : t.allocate.income}</div>
+              {incomeSources.length === 1 ? (
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                  <span style={{ fontSize: 24, opacity: 0.7 }}>{t.currencySymbol}</span>
+                  <MoneyInput value={incomeSources[0].amount} t={t} style={{ flex: 1, fontFamily: fontSans, fontSize: 32, fontWeight: 700, padding: 0, border: 'none', background: 'transparent', color: C.surface, outline: 'none', width: '100%', minWidth: 0, letterSpacing: '-0.02em' }} onChange={(v) => updateIncomeSource(incomeSources[0].id, 'amount', v)} />
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 12 }}>
+                    <span style={{ fontSize: 24, opacity: 0.7 }}>{t.currencySymbol}</span>
+                    <span style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmtNumber(salary, t)}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {incomeSources.map(src => (
+                      <div key={src.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input value={src.name} onChange={(e) => updateIncomeSource(src.id, 'name', e.target.value)} style={{ flex: 1, minWidth: 0, fontFamily: fontSans, fontSize: 13, fontWeight: 500, padding: '6px 10px', border: 'none', borderRadius: 8, background: 'rgba(255,255,255,0.12)', color: C.surface, outline: 'none' }} />
+                        <MoneyInput value={src.amount} t={t} style={{ width: 96, fontFamily: fontSans, fontSize: 13, fontWeight: 600, padding: '6px 10px', border: 'none', borderRadius: 8, background: 'rgba(255,255,255,0.12)', color: C.surface, outline: 'none', textAlign: 'right' }} onChange={(v) => updateIncomeSource(src.id, 'amount', v)} />
+                        <button onClick={() => removeIncomeSource(src.id)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center' }} aria-label={t.common.delete}>
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              <button onClick={addIncomeSource} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.85)', cursor: 'pointer', padding: '8px 0 0', fontFamily: fontSans, fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Plus size={12} /> {t.allocate.addSource}
+              </button>
               {salary > 0 && (
                 <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.18)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
                   <span style={{ opacity: 0.85 }}>{t.allocate.total} <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(allocated, t)}</strong></span>
