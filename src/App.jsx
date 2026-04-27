@@ -189,6 +189,7 @@ const copy = {
       reset: 'Reset',
       monthly: 'Monthly',
       growth: 'Growth',
+      dividend: 'Dividend',
       diff10y: (amt) => `In 10 years, +${amt} vs. current plan.`,
     },
     forecast: {
@@ -397,6 +398,7 @@ const copy = {
       reset: 'Resetar',
       monthly: 'Mensal',
       growth: 'Crescimento',
+      dividend: 'Dividendo',
       diff10y: (amt) => `Em 10 anos, +${amt} vs. plano atual.`,
     },
     forecast: {
@@ -554,7 +556,7 @@ function projectWealth(buckets, years, extraMonthly = 0) {
   const extraShare = state.length > 0 ? extraMonthly / state.length : 0;
   for (let m = 1; m <= months; m++) {
     state.forEach(b => {
-      const monthlyRate = (Number(b.growth) || 0) / 100 / 12;
+      const monthlyRate = ((Number(b.growth) || 0) + (Number(b.dividend) || 0)) / 100 / 12;
       b.value = b.value * (1 + monthlyRate) + (Number(b.monthly) || 0) + extraShare;
     });
     if (m % 12 === 0) points.push({ year: m / 12, total: state.reduce((sum, b) => sum + b.value, 0) });
@@ -583,7 +585,7 @@ function projectWealthMonthly(buckets, years, extraMonthly = 0) {
   let cumContrib = 0;
   for (let m = 1; m <= months; m++) {
     state.forEach(b => {
-      const monthlyRate = (Number(b.growth) || 0) / 100 / 12;
+      const monthlyRate = ((Number(b.growth) || 0) + (Number(b.dividend) || 0)) / 100 / 12;
       b.value = b.value * (1 + monthlyRate) + (Number(b.monthly) || 0) + extraShare;
     });
     cumContrib += monthlyContribBase;
@@ -986,6 +988,7 @@ export default function FinanceApp() {
       id: Math.random().toString(36),
       current: 0,
       monthly: 0,
+      dividend: 0,
     })));
 
     // Seed goals from saveFor picks
@@ -1168,7 +1171,7 @@ export default function FinanceApp() {
     primaryBtn: { background: C.accent, color: C.surface, border: 'none', padding: '12px 20px', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: fontSans, display: 'inline-flex', alignItems: 'center', gap: 6 },
     ghostBtn: { background: 'transparent', border: 'none', color: C.inkSoft, padding: '6px 10px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: fontSans, display: 'inline-flex', alignItems: 'center', gap: 4 },
     input: { width: '100%', padding: '12px 14px', fontSize: 15, fontFamily: fontSans, border: `1px solid ${C.line}`, borderRadius: 12, background: C.surfaceAlt, boxSizing: 'border-box', color: C.ink, outline: 'none' },
-    inputNum: { padding: '9px 12px', fontSize: 14, fontFamily: fontSans, fontVariantNumeric: 'tabular-nums', fontWeight: 600, border: `1px solid ${C.line}`, borderRadius: 10, background: C.surfaceAlt, textAlign: 'right', width: 100, outline: 'none', color: C.ink },
+    inputNum: { padding: '9px 12px', fontSize: 14, fontFamily: fontSans, fontVariantNumeric: 'tabular-nums', fontWeight: 600, border: `1px solid ${C.line}`, borderRadius: 10, background: C.surfaceAlt, textAlign: 'right', width: 100, outline: 'none', color: C.ink, boxSizing: 'border-box' },
 
     progressTrack: { height: 6, background: C.surfaceAlt, borderRadius: 3, overflow: 'hidden' },
     progressFill: (pct, color = C.accent) => ({ height: '100%', width: `${Math.min(100, Math.max(0, pct))}%`, background: color, borderRadius: 3, transition: 'width 0.4s' }),
@@ -1407,11 +1410,11 @@ export default function FinanceApp() {
   };
 
   const updateBucket = (id, field, value) => {
-    setBuckets(buckets.map(b => b.id === id ? { ...b, [field]: ['current', 'monthly', 'growth'].includes(field) ? (value === '' ? 0 : Number(value)) : value } : b));
+    setBuckets(buckets.map(b => b.id === id ? { ...b, [field]: ['current', 'monthly', 'growth', 'dividend'].includes(field) ? (value === '' ? 0 : Number(value)) : value } : b));
   };
   const removeBucket = (id) => setBuckets(buckets.filter(b => b.id !== id));
   const addBucket = () => {
-    setBuckets([...buckets, { id: Math.random().toString(36), name: 'New', type: 'other', current: 0, monthly: 0, growth: 5 }]);
+    setBuckets([...buckets, { id: Math.random().toString(36), name: 'New', type: 'other', current: 0, monthly: 0, growth: 5, dividend: 0 }]);
     setEditingWealth(true);
   };
 
@@ -1900,7 +1903,7 @@ export default function FinanceApp() {
                     ) : (
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 15, fontWeight: 500 }}>{b.name}</div>
-                        <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 2 }}>{t.wealth.monthly} {fmt(b.monthly, t)} · {b.growth}%/yr</div>
+                        <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 2 }}>{t.wealth.monthly} {fmt(b.monthly, t)} · {b.growth}%{Number(b.dividend) > 0 ? ` + ${b.dividend}% div` : ''}/yr</div>
                       </div>
                     )}
                     <input type="number" inputMode="decimal" style={s.inputNum} value={b.current || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'current', e.target.value)} />
@@ -1909,14 +1912,20 @@ export default function FinanceApp() {
                     )}
                   </div>
                   {editingWealth && (
-                    <div style={{ display: 'flex', gap: 8, paddingLeft: 48 }}>
-                      <div style={{ flex: 1 }}>
+                    <div style={{ paddingLeft: 48 }}>
+                      <div style={{ marginBottom: 8 }}>
                         <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.monthly}</div>
                         <input type="number" inputMode="decimal" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={b.monthly || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'monthly', e.target.value)} />
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.growth} %</div>
-                        <input type="number" inputMode="decimal" step="0.1" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={b.growth || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'growth', e.target.value)} />
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.growth} %</div>
+                          <input type="number" inputMode="decimal" step="0.1" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={b.growth || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'growth', e.target.value)} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.dividend} %</div>
+                          <input type="number" inputMode="decimal" step="0.1" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={b.dividend || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'dividend', e.target.value)} />
+                        </div>
                       </div>
                     </div>
                   )}
