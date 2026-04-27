@@ -822,6 +822,20 @@ export default function FinanceApp() {
   const [forecastYears, setForecastYears] = useState(10);
   const [forecastBucketId, setForecastBucketId] = useState('all');
 
+  // Hide floating bottom nav while the on-screen keyboard is open (iOS Safari pushes fixed elements up)
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const isField = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+    const onFocusIn = (e) => { if (isField(e.target)) setKeyboardOpen(true); };
+    const onFocusOut = () => setKeyboardOpen(false);
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('focusout', onFocusOut);
+    };
+  }, []);
+
   // Persist state whenever anything important changes
   useEffect(() => {
     saveState({
@@ -2202,15 +2216,19 @@ export default function FinanceApp() {
         )}
       </div>
 
-      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, height: 'calc(96px + env(safe-area-inset-bottom))', background: `linear-gradient(to top, ${C.bg} 55%, ${C.bg}00)`, pointerEvents: 'none', zIndex: 19 }} />
+      {!keyboardOpen && (
+        <>
+          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, height: 'calc(96px + env(safe-area-inset-bottom))', background: `linear-gradient(to top, ${C.bg} 55%, ${C.bg}00)`, pointerEvents: 'none', zIndex: 19 }} />
 
-      <div style={s.bottomNav}>
-        <button style={s.navBtn(tab === 'home')} onClick={() => setTab('home')}><HomeIcon size={17} strokeWidth={2} /></button>
-        <button style={s.navBtn(tab === 'allocate')} onClick={() => setTab('allocate')}><Wallet size={17} strokeWidth={2} /></button>
-        <button style={s.navBtn(tab === 'goals')} onClick={() => setTab('goals')}><Target size={17} strokeWidth={2} /></button>
-        <button style={s.navBtn(tab === 'wealth')} onClick={() => setTab('wealth')}><TrendingUp size={17} strokeWidth={2} /></button>
-        <button style={s.navBtn(tab === 'forecast')} onClick={() => setTab('forecast')}><BarChart3 size={17} strokeWidth={2} /></button>
-      </div>
+          <div style={s.bottomNav}>
+            <button style={s.navBtn(tab === 'home')} onClick={() => setTab('home')}><HomeIcon size={17} strokeWidth={2} /></button>
+            <button style={s.navBtn(tab === 'allocate')} onClick={() => setTab('allocate')}><Wallet size={17} strokeWidth={2} /></button>
+            <button style={s.navBtn(tab === 'goals')} onClick={() => setTab('goals')}><Target size={17} strokeWidth={2} /></button>
+            <button style={s.navBtn(tab === 'wealth')} onClick={() => setTab('wealth')}><TrendingUp size={17} strokeWidth={2} /></button>
+            <button style={s.navBtn(tab === 'forecast')} onClick={() => setTab('forecast')}><BarChart3 size={17} strokeWidth={2} /></button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
