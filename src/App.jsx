@@ -29,6 +29,18 @@ const copy = {
           reflect: { title: 'Reflect', sub: 'Check in once a month' },
         },
         privacy: 'Stays on your device. No account needed.',
+        namePlaceholder: 'Your name (optional)',
+      },
+      summary: {
+        title: 'You\'re set!',
+        sub: 'Here\'s the plan we\'ll start with. Change anything later in Settings.',
+        country: 'Country',
+        income: 'Monthly income',
+        goal: 'Main goal',
+        profile: 'Investor profile',
+        saveFor: 'Saving for',
+        none: '—',
+        ctaContinue: 'Continue to your plan',
       },
       income: {
         title: 'What\'s your',
@@ -41,8 +53,8 @@ const copy = {
         titleBold: 'live?',
         sub: 'So we can show the right benchmarks.',
         options: [
-          { v: 'uk', l: 'United Kingdom', currency: 'GBP', symbol: '£' },
-          { v: 'br', l: 'Brazil', currency: 'BRL', symbol: 'R$' },
+          { v: 'uk', l: 'United Kingdom', currency: 'GBP', symbol: '£', flag: '🇬🇧' },
+          { v: 'br', l: 'Brazil', currency: 'BRL', symbol: 'R$', flag: '🇧🇷' },
         ],
       },
       goal: {
@@ -320,6 +332,18 @@ const copy = {
           reflect: { title: 'Refletir', sub: 'Faça um check-in mensal' },
         },
         privacy: 'Tudo fica no seu aparelho. Sem cadastro.',
+        namePlaceholder: 'Seu nome (opcional)',
+      },
+      summary: {
+        title: 'Tudo pronto!',
+        sub: 'Esse é o plano inicial. Você pode mudar tudo depois em Ajustes.',
+        country: 'País',
+        income: 'Renda mensal',
+        goal: 'Meta principal',
+        profile: 'Perfil de investidor',
+        saveFor: 'Guardando para',
+        none: '—',
+        ctaContinue: 'Ir pro meu plano',
       },
       income: {
         title: 'Qual é sua',
@@ -332,8 +356,8 @@ const copy = {
         titleBold: 'mora?',
         sub: 'Para mostrar os benchmarks certos.',
         options: [
-          { v: 'uk', l: 'Reino Unido', currency: 'GBP', symbol: '£' },
-          { v: 'br', l: 'Brasil', currency: 'BRL', symbol: 'R$' },
+          { v: 'uk', l: 'Reino Unido', currency: 'GBP', symbol: '£', flag: '🇬🇧' },
+          { v: 'br', l: 'Brasil', currency: 'BRL', symbol: 'R$', flag: '🇧🇷' },
         ],
       },
       goal: {
@@ -1155,6 +1179,7 @@ export default function FinanceApp() {
   const [mainGoal, setMainGoal] = useState(saved?.mainGoal || null);
   const [investorProfile, setInvestorProfile] = useState(saved?.investorProfile || null);
   const [saveForPicks, setSaveForPicks] = useState(saved?.saveForPicks || []);
+  const [userName, setUserName] = useState(saved?.userName || '');
 
   // Core state
   // Income sources. Migrated from the legacy single-salary field on first
@@ -1240,12 +1265,12 @@ export default function FinanceApp() {
   useEffect(() => {
     saveState({
       lang, phase, onboardStep,
-      country, mainGoal, investorProfile, saveForPicks,
+      country, mainGoal, investorProfile, saveForPicks, userName,
       salary, incomeSources, items, buckets, goals,
       snapshots, lastCheckIn, checkInStreak,
       targetSplitPct, pillarTargets,
     });
-  }, [lang, phase, onboardStep, country, mainGoal, investorProfile, saveForPicks,
+  }, [lang, phase, onboardStep, country, mainGoal, investorProfile, saveForPicks, userName,
       salary, incomeSources, items, buckets, goals, snapshots, lastCheckIn, checkInStreak, targetSplitPct, pillarTargets]);
 
   // ==================== DERIVED ====================
@@ -1686,11 +1711,12 @@ export default function FinanceApp() {
       if (onboardStep === 3) return mainGoal !== null;
       if (onboardStep === 4) return investorProfile !== null;
       if (onboardStep === 5) return true;
+      if (onboardStep === 6) return true;
       return false;
     };
 
     const handleNext = () => {
-      if (onboardStep < 5) setOnboardStep(onboardStep + 1);
+      if (onboardStep < 6) setOnboardStep(onboardStep + 1);
       else finishOnboarding();
     };
 
@@ -1698,7 +1724,7 @@ export default function FinanceApp() {
       <div style={s.app}>
         <div style={s.onboardMain}>
           <div style={s.dots}>
-            {[0,1,2,3,4,5].map(i => <div key={i} style={s.dot(onboardStep === i)} />)}
+            {[0,1,2,3,4,5,6].map(i => <div key={i} style={s.dot(onboardStep === i)} />)}
           </div>
 
           {onboardStep === 0 && (
@@ -1732,7 +1758,13 @@ export default function FinanceApp() {
                   </div>
                 ))}
               </div>
-              <p style={{ fontSize: 11, color: C.inkMuted, textAlign: 'center', marginTop: 18, marginBottom: 0 }}>
+              <input
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                placeholder={t.onboarding.welcome.namePlaceholder}
+                style={{ ...s.input, marginTop: 16, padding: '12px 14px', fontSize: 16, textAlign: 'center' }}
+              />
+              <p style={{ fontSize: 11, color: C.inkMuted, textAlign: 'center', marginTop: 14, marginBottom: 0 }}>
                 {t.onboarding.welcome.privacy}
               </p>
             </>
@@ -1747,12 +1779,12 @@ export default function FinanceApp() {
               <p style={s.onboardSub}>{t.onboarding.country.sub}</p>
               {t.onboarding.country.options.map(opt => (
                 <div key={opt.v} style={s.optionCard(country === opt.v)} onClick={() => setCountry(opt.v)}>
-                  <div style={s.optionIconBox(country === opt.v)}>
-                    <Globe size={16} color={country === opt.v ? C.surface : C.inkSoft} strokeWidth={2} />
+                  <div style={{ ...s.optionIconBox(country === opt.v), background: country === opt.v ? C.accent : C.surfaceAlt, fontSize: 22, lineHeight: 1 }}>
+                    <span aria-hidden="true">{opt.flag}</span>
                   </div>
                   <div style={s.optionLabel}>
                     <div style={s.optionLabelMain}>{opt.l}</div>
-                    <div style={s.optionLabelSub}>{opt.symbol} ({opt.currency})</div>
+                    <div style={s.optionLabelSub}>{opt.symbol} · {opt.currency}</div>
                   </div>
                   <div style={s.optionCheck(country === opt.v)}>{country === opt.v && <Check size={12} color={C.surface} strokeWidth={3} />}</div>
                 </div>
@@ -1860,11 +1892,44 @@ export default function FinanceApp() {
               })}
             </>
           )}
+
+          {onboardStep === 6 && (() => {
+            const countryOpt = t.onboarding.country.options.find(o => o.v === country);
+            const goalOpt = t.onboarding.goal.options.find(o => o.v === mainGoal);
+            const profileOpt = t.onboarding.profile.options.find(o => o.v === investorProfile);
+            const saveForLabels = t.onboarding.saveFor.options.filter(o => saveForPicks.includes(o.v)).map(o => o.l).join(', ');
+            const rows = [
+              { label: t.onboarding.summary.country, value: countryOpt ? `${countryOpt.flag} ${countryOpt.l}` : t.onboarding.summary.none },
+              { label: t.onboarding.summary.income, value: salary > 0 ? fmt(salary, t) : t.onboarding.summary.none },
+              { label: t.onboarding.summary.goal, value: goalOpt?.l || t.onboarding.summary.none },
+              { label: t.onboarding.summary.profile, value: profileOpt?.l || t.onboarding.summary.none },
+              { label: t.onboarding.summary.saveFor, value: saveForLabels || t.onboarding.summary.none },
+            ];
+            return (
+              <>
+                <div style={{ width: 56, height: 56, borderRadius: 28, background: C.accent, color: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '8px auto 16px' }}>
+                  <Check size={26} strokeWidth={3} />
+                </div>
+                <h1 style={{ ...s.onboardTitle, textAlign: 'center', fontSize: 30 }}>
+                  {t.onboarding.summary.title}
+                </h1>
+                <p style={{ ...s.onboardSub, textAlign: 'center' }}>{t.onboarding.summary.sub}</p>
+                <div style={{ background: C.surface, border: `1px solid ${C.lineSoft}`, borderRadius: 14, padding: 4, marginTop: 4 }}>
+                  {rows.map((r, i) => (
+                    <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, padding: '12px 14px', borderBottom: i < rows.length - 1 ? `1px solid ${C.lineSoft}` : 'none' }}>
+                      <span style={{ fontSize: 12, color: C.inkMuted, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', flexShrink: 0 }}>{r.label}</span>
+                      <span style={{ fontSize: 13, color: C.ink, fontWeight: 600, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         <div style={s.bottomCTA}>
           <button style={s.ctaBtn(!canAdvance())} onClick={handleNext} disabled={!canAdvance()}>
-            {t.onboarding.cta} <ArrowRight size={16} />
+            {onboardStep === 6 ? t.onboarding.summary.ctaContinue : t.onboarding.cta} <ArrowRight size={16} />
           </button>
           {onboardStep === 5 && (
             <button style={s.skipBtn} onClick={finishOnboarding}>{t.onboarding.saveFor.skip}</button>
@@ -2055,7 +2120,7 @@ export default function FinanceApp() {
           <>
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4 }}>
-                ● {t.home.greeting}
+                ● {t.home.greeting}{userName ? `, ${userName}` : ''}
               </div>
               <h1 style={s.h1}>{monthName} <span style={{ color: C.inkMuted, fontWeight: 400 }}>{year}</span></h1>
             </div>
