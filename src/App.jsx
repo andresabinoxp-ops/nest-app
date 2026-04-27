@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart, CartesianGrid, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import {
   Home as HomeIcon, Target, Wallet, TrendingUp, User, Plus, Trash2, Pencil, Languages,
@@ -941,6 +941,7 @@ export default function FinanceApp() {
   // UI state — don't persist editing flags etc.
   const [editingAllocate, setEditingAllocate] = useState(false);
   const [editingBucketId, setEditingBucketId] = useState(null);
+  const justAddedIdRef = useRef(null);
   const [pieExpanded, setPieExpanded] = useState(false);
   const [txBucketId, setTxBucketId] = useState(null);
   const [txMode, setTxMode] = useState('deposit');
@@ -1610,14 +1611,15 @@ export default function FinanceApp() {
   };
   const addBucketOfType = (type) => {
     const defaults = {
-      stocks: { name: 'Stocks / ETFs', growth: 7, dividend: 2 },
+      stocks: { name: 'Stocks', growth: 7, dividend: 2 },
       bonds: { name: 'Bonds', growth: 5, dividend: 0 },
-      cash: { name: 'Cash savings', growth: 4, dividend: 0 },
+      cash: { name: 'Cash', growth: 4, dividend: 0 },
       crypto: { name: 'Crypto', growth: 15, dividend: 0 },
     };
     const d = defaults[type] || { name: 'New', growth: 5, dividend: 0 };
     const id = Math.random().toString(36);
     setBuckets([...buckets, { id, name: d.name, type, current: 0, monthly: 0, growth: d.growth, dividend: d.dividend, lastUpdated: Date.now() }]);
+    justAddedIdRef.current = id;
     setEditingBucketId(id);
   };
   const addBucket = () => addBucketOfType('other');
@@ -2245,7 +2247,17 @@ export default function FinanceApp() {
                       <div style={{ paddingLeft: 48, marginTop: 12 }}>
                         <div style={{ marginBottom: 8 }}>
                           <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.common.edit} {t.wealth.title}</div>
-                          <input style={{ ...s.input, padding: '8px 12px', fontSize: 16 }} value={b.name} onChange={(e) => updateBucket(b.id, 'name', e.target.value)} />
+                          <input
+                            ref={(el) => {
+                              if (el && justAddedIdRef.current === b.id) {
+                                justAddedIdRef.current = null;
+                                setTimeout(() => { el.focus(); el.select(); }, 50);
+                              }
+                            }}
+                            style={{ ...s.input, padding: '8px 12px', fontSize: 16 }}
+                            value={b.name}
+                            onChange={(e) => updateBucket(b.id, 'name', e.target.value)}
+                          />
                         </div>
                         <div style={{ marginBottom: 8 }}>
                           <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.account} <span style={{ color: C.inkMuted, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {t.wealth.accountOptional}</span></div>
