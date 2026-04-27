@@ -723,7 +723,6 @@ const TYPE_RISK = { cash: 1, bonds: 2, pension: 2, reits: 3, other: 3, stocks: 4
 const CATEGORY_OF = { stocks: 'equities', reits: 'equities', bonds: 'fixed', pension: 'fixed', cash: 'cash', crypto: 'alternatives', other: 'alternatives' };
 const CATEGORY_ORDER = ['equities', 'fixed', 'cash', 'alternatives'];
 const CATEGORY_COLORS = { equities: '#2E8B88', fixed: '#88A6A4', cash: '#5CAB7D', alternatives: '#D4A35C' };
-const GROUPING_THRESHOLD = 5;
 
 // Weighted-average risk from a shares-by-type map.
 function blendedRisk(sharesMap) {
@@ -2286,7 +2285,8 @@ export default function FinanceApp() {
                 );
               };
 
-              const grouped = buckets.length >= GROUPING_THRESHOLD;
+              const distinctCategories = new Set(buckets.map(b => CATEGORY_OF[b.type])).size;
+              const grouped = distinctCategories >= 2;
               return (
                 <div style={s.card}>
                   <div style={{ ...s.cardLabel, marginBottom: 4 }}>{t.nav.wealth}</div>
