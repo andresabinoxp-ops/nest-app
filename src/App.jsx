@@ -116,6 +116,13 @@ const copy = {
       benchmarkOk: 'In range',
       benchmarkLow: 'Below typical',
       addItem: 'Add item',
+      flow: 'Money flow',
+      onTrack: 'on track',
+      over: (n) => `+${n}% over`,
+      under: (n) => `-${n}% under`,
+      target: 'target',
+      starterTitle: 'Quick start',
+      moneyFlowEmpty: 'Add items below to see how your money is split.',
       planHint: 'Nest is a planner. Set how your money flows each month.',
       saved: 'Saved for',
       smartCard: {
@@ -366,6 +373,13 @@ const copy = {
       benchmarkOk: 'Na faixa',
       benchmarkLow: 'Abaixo do típico',
       addItem: 'Adicionar item',
+      flow: 'Fluxo do dinheiro',
+      onTrack: 'no caminho',
+      over: (n) => `+${n}% acima`,
+      under: (n) => `-${n}% abaixo`,
+      target: 'alvo',
+      starterTitle: 'Início rápido',
+      moneyFlowEmpty: 'Adicione itens abaixo para ver a divisão do seu dinheiro.',
       planHint: 'O Nest é um planejador. Defina como seu dinheiro flui a cada mês.',
       saved: 'Salvo em',
       smartCard: {
@@ -613,6 +627,54 @@ const DEFAULT_ITEMS = {
     { pillar: 'wealth', name: 'Poupança', icon: 'piggy', benchmarkKey: 'savings' },
     { pillar: 'wealth', name: 'Investimentos', icon: 'line', benchmarkKey: 'investments' },
   ],
+};
+
+// Suggestion chips used to seed an empty pillar.
+const STARTER_ITEMS = {
+  en: {
+    needs: [
+      { name: 'Rent', icon: 'house', benchmarkKey: 'housing' },
+      { name: 'Utilities', icon: 'line', benchmarkKey: 'utilities' },
+      { name: 'Groceries', icon: 'bag', benchmarkKey: 'groceries' },
+      { name: 'Transport', icon: 'car', benchmarkKey: 'transport' },
+    ],
+    wants: [
+      { name: 'Subscriptions', icon: 'gem', benchmarkKey: 'lifestyle' },
+      { name: 'Dining', icon: 'gem', benchmarkKey: 'lifestyle' },
+      { name: 'Travel', icon: 'gem', benchmarkKey: 'lifestyle' },
+    ],
+    wealth: [
+      { name: 'Emergency fund', icon: 'shield', benchmarkKey: 'emergency' },
+      { name: 'Savings', icon: 'piggy', benchmarkKey: 'savings' },
+      { name: 'Investments', icon: 'line', benchmarkKey: 'investments' },
+    ],
+    debt: [
+      { name: 'Credit card', icon: 'card', benchmarkKey: 'debt' },
+      { name: 'Loan', icon: 'card', benchmarkKey: 'debt' },
+    ],
+  },
+  pt: {
+    needs: [
+      { name: 'Aluguel', icon: 'house', benchmarkKey: 'housing' },
+      { name: 'Contas', icon: 'line', benchmarkKey: 'utilities' },
+      { name: 'Mercado', icon: 'bag', benchmarkKey: 'groceries' },
+      { name: 'Transporte', icon: 'car', benchmarkKey: 'transport' },
+    ],
+    wants: [
+      { name: 'Assinaturas', icon: 'gem', benchmarkKey: 'lifestyle' },
+      { name: 'Restaurantes', icon: 'gem', benchmarkKey: 'lifestyle' },
+      { name: 'Viagens', icon: 'gem', benchmarkKey: 'lifestyle' },
+    ],
+    wealth: [
+      { name: 'Reserva', icon: 'shield', benchmarkKey: 'emergency' },
+      { name: 'Poupança', icon: 'piggy', benchmarkKey: 'savings' },
+      { name: 'Investimentos', icon: 'line', benchmarkKey: 'investments' },
+    ],
+    debt: [
+      { name: 'Cartão', icon: 'card', benchmarkKey: 'debt' },
+      { name: 'Empréstimo', icon: 'card', benchmarkKey: 'debt' },
+    ],
+  },
 };
 
 // Icon mapping
@@ -1009,9 +1071,11 @@ export default function FinanceApp() {
   const [snapshots, setSnapshots] = useState(saved?.snapshots || []);
   const [lastCheckIn, setLastCheckIn] = useState(saved?.lastCheckIn || null);
   const [checkInStreak, setCheckInStreak] = useState(saved?.checkInStreak || 0);
+  // Target pillar percentages, set when the user applies a Smart Split.
+  const [targetSplitPct, setTargetSplitPct] = useState(saved?.targetSplitPct || null);
 
   // UI state — don't persist editing flags etc.
-  const [editingAllocate, setEditingAllocate] = useState(false);
+  const [editingItemId, setEditingItemId] = useState(null);
   const [editingBucketId, setEditingBucketId] = useState(null);
   const justAddedIdRef = useRef(null);
   const [pieExpanded, setPieExpanded] = useState(false);
@@ -1058,9 +1122,10 @@ export default function FinanceApp() {
       country, mainGoal, investorProfile, saveForPicks,
       salary, items, buckets, goals,
       snapshots, lastCheckIn, checkInStreak,
+      targetSplitPct,
     });
   }, [lang, phase, onboardStep, country, mainGoal, investorProfile, saveForPicks,
-      salary, items, buckets, goals, snapshots, lastCheckIn, checkInStreak]);
+      salary, items, buckets, goals, snapshots, lastCheckIn, checkInStreak, targetSplitPct]);
 
   // ==================== DERIVED ====================
   const allocated = useMemo(() => items.reduce((sum, c) => sum + (Number(c.amount) || 0), 0), [items]);
@@ -1631,6 +1696,24 @@ export default function FinanceApp() {
     setItems(items.map(c => c.id === id ? { ...c, [field]: field === 'amount' ? (value === '' ? 0 : Number(value)) : value } : c));
   };
   const removeItem = (id) => setItems(items.filter(c => c.id !== id));
+  const computePillarPctFromSplit = (split) => {
+    const pillarMap = { housing: 'needs', utilities: 'needs', groceries: 'needs', transport: 'needs', lifestyle: 'wants', emergency: 'wealth', savings: 'wealth', investments: 'wealth', debt: 'debt' };
+    const totals = { needs: 0, wants: 0, wealth: 0, debt: 0 };
+    let sum = 0;
+    Object.entries(split).forEach(([k, amt]) => {
+      const p = pillarMap[k];
+      if (!p) return;
+      totals[p] += Number(amt) || 0;
+      sum += Number(amt) || 0;
+    });
+    if (sum === 0) return null;
+    return {
+      needs: Math.round((totals.needs / sum) * 100),
+      wants: Math.round((totals.wants / sum) * 100),
+      wealth: Math.round((totals.wealth / sum) * 100),
+      debt: Math.round((totals.debt / sum) * 100),
+    };
+  };
   const applySmartSplit = (split) => {
     // Map split keys to item names, icons, pillars, and benchmark keys
     const nameMap = lang === 'en'
@@ -1651,14 +1734,17 @@ export default function FinanceApp() {
         amount: amt,
       }));
     setItems(newItems);
+    setTargetSplitPct(computePillarPctFromSplit(split));
     setSmartStep(null);
     setSmartAnswers({});
     setSmartResult(null);
   };
 
-  const addItem = (pillar) => {
-    setItems([...items, { id: Math.random().toString(36), name: t.allocate.newItem, amount: 0, icon: 'circle', pillar, benchmarkKey: null }]);
-    setEditingAllocate(true);
+  const addItem = (pillar, preset = null) => {
+    const base = preset || { name: t.allocate.newItem, icon: 'circle', benchmarkKey: null };
+    const id = Math.random().toString(36);
+    setItems([...items, { id, name: base.name, icon: base.icon, pillar, benchmarkKey: base.benchmarkKey, amount: 0 }]);
+    setEditingItemId(id);
   };
 
   const updateBucket = (id, field, value) => {
@@ -1857,46 +1943,66 @@ export default function FinanceApp() {
                 <span style={{ fontSize: 24, opacity: 0.7 }}>{t.currencySymbol}</span>
                 <MoneyInput value={salary} t={t} style={{ flex: 1, fontFamily: fontSans, fontSize: 32, fontWeight: 700, padding: 0, border: 'none', background: 'transparent', color: C.surface, outline: 'none', width: '100%', minWidth: 0, letterSpacing: '-0.02em' }} onChange={(v) => setSalary(v)} />
               </div>
+              {salary > 0 && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.18)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                  <span style={{ opacity: 0.85 }}>{t.allocate.total} <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(allocated, t)}</strong></span>
+                  <span style={{ fontWeight: 700, color: unassigned < 0 ? '#FFB89A' : C.surface, fontVariantNumeric: 'tabular-nums' }}>
+                    {unassigned < 0 ? `${t.allocate.overIncome} ${fmt(-unassigned, t)}` : `${fmt(unassigned, t)} ${t.allocate.remaining.toLowerCase()}`}
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Smart Split — card, flow, or results */}
+            {/* Money flow bar */}
             {smartStep === null && (
-              <>
-                {/* Copy from last month card — shows only when past snapshots exist */}
-                {snapshots.length > 0 && (
-                  <div style={{ ...s.card, display: 'flex', alignItems: 'center', gap: 14, background: C.surface, border: `1px solid ${C.line}` }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 12, background: C.surfaceAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <RotateCcw size={16} color={C.accent} strokeWidth={2} />
+              <div style={s.card}>
+                <div style={{ ...s.cardLabel, marginBottom: 10 }}>{t.allocate.flow}</div>
+                {allocated === 0 ? (
+                  <div style={{ fontSize: 12, color: C.inkMuted, lineHeight: 1.5 }}>{t.allocate.moneyFlowEmpty}</div>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', height: 14, borderRadius: 8, overflow: 'hidden', background: C.lineSoft }}>
+                      {['needs', 'wants', 'wealth', 'debt'].map(p => {
+                        const amt = pillarTotals[p] || 0;
+                        if (amt === 0) return null;
+                        const pct = (amt / allocated) * 100;
+                        return <div key={p} style={{ width: `${pct}%`, background: t.allocate.pillars[p].color }} />;
+                      })}
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 2 }}>{t.allocate.copyLastCard.title}</div>
-                      <div style={{ fontSize: 12, color: C.inkSoft }}>{t.allocate.copyLastCard.sub}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px', marginTop: 12 }}>
+                      {['needs', 'wants', 'wealth', 'debt'].map(p => {
+                        const amt = pillarTotals[p] || 0;
+                        const pct = allocated > 0 ? Math.round((amt / allocated) * 100) : 0;
+                        return (
+                          <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ width: 10, height: 10, borderRadius: 3, background: t.allocate.pillars[p].color, flexShrink: 0 }} />
+                            <span style={{ fontSize: 12, fontWeight: 500, color: C.ink, flex: 1 }}>{t.allocate.pillars[p].name}</span>
+                            <span style={{ fontSize: 11, color: C.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <button style={{ ...s.ghostBtn, background: C.accentSoft, color: C.accent, padding: '8px 14px', borderRadius: 10, fontWeight: 600 }} onClick={copyLastMonth}>
-                      {t.allocate.copyLastCard.cta}
-                    </button>
-                  </div>
+                  </>
                 )}
+              </div>
+            )}
 
-                <div style={{ ...s.card, background: C.accentSoft, border: `1px solid ${C.accent}30`, display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 12, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Sparkles size={18} color={C.surface} strokeWidth={2} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 2 }}>{t.allocate.smartCard.title}</div>
-                    <div style={{ fontSize: 12, color: C.inkSoft }}>{t.allocate.smartCard.sub}</div>
-                  </div>
-                  <button style={s.primaryBtn} onClick={() => { setSmartStep('q1'); setSmartAnswers({}); setSmartResult(null); }}>
-                    {t.allocate.smartCard.cta}
+            {/* Setup strip (only when no items yet) */}
+            {smartStep === null && items.length === 0 && (
+              <div style={s.card}>
+                <div style={{ ...s.cardLabel, marginBottom: 10 }}>{t.allocate.starterTitle}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button style={{ ...s.primaryBtn, width: '100%', justifyContent: 'center' }} onClick={() => { setSmartStep('q1'); setSmartAnswers({}); setSmartResult(null); }}>
+                    <Sparkles size={14} /> {t.allocate.smartCard.cta}
                   </button>
+                  {snapshots.length > 0 && (
+                    <button style={{ ...s.ghostBtn, width: '100%', justifyContent: 'center', border: `1px solid ${C.line}`, borderRadius: 12, padding: '10px 14px', fontWeight: 600 }} onClick={copyLastMonth}>
+                      <RotateCcw size={13} /> {t.allocate.copyLastCard.cta}
+                    </button>
+                  )}
                 </div>
-
-                {/* Planner hint */}
-                <div style={{ ...s.card, display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px' }}>
-                  <Sparkles size={14} color={C.inkMuted} strokeWidth={2} />
-                  <div style={{ flex: 1, fontSize: 12, color: C.inkMuted, lineHeight: 1.5 }}>{t.allocate.planHint}</div>
-                </div>
-              </>
+                <div style={{ fontSize: 11, color: C.inkMuted, lineHeight: 1.5, marginTop: 10 }}>{t.allocate.planHint}</div>
+              </div>
             )}
 
             {/* Smart Split questions */}
@@ -1973,49 +2079,66 @@ export default function FinanceApp() {
               </>
             )}
 
-            {/* Edit toggle */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-              <button style={s.ghostBtn} onClick={() => setEditingAllocate(!editingAllocate)}>
-                {editingAllocate ? <Check size={11} /> : <Pencil size={11} />}
-                {editingAllocate ? t.common.done : t.common.edit}
-              </button>
-            </div>
-
             {/* Pillars */}
             {['needs', 'wants', 'wealth', 'debt'].map(pillarKey => {
               const pillar = t.allocate.pillars[pillarKey];
               const pillarItems = itemsByPillar(pillarKey);
               const pillarTotal = pillarTotals[pillarKey] || 0;
+              const pillarPct = allocated > 0 ? Math.round((pillarTotal / allocated) * 100) : 0;
+              const targetPct = targetSplitPct ? targetSplitPct[pillarKey] : null;
+              const diff = targetPct != null ? pillarPct - targetPct : null;
+              const status = diff == null ? null : Math.abs(diff) < 5 ? 'ok' : diff > 0 ? 'over' : 'under';
+              const statusColor = status === 'ok' ? C.accent : status ? C.yellow : C.inkMuted;
+              const starters = (STARTER_ITEMS[lang] || STARTER_ITEMS.en)[pillarKey] || [];
 
               return (
                 <div key={pillarKey} style={s.card}>
                   <div style={s.pillarHeader}>
                     <div style={s.pillarDot(pillar.color)} />
-                    <div>
+                    <div style={{ flex: 1 }}>
                       <div style={s.pillarName}>{pillar.name}</div>
                       <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 1 }}>{pillar.sub}</div>
                     </div>
-                    <div style={s.pillarTotal}>{fmt(pillarTotal, t)}</div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={s.pillarTotal}>{fmt(pillarTotal, t)}</div>
+                      {targetPct != null && pillarTotal > 0 && (
+                        <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 2 }}>
+                          {pillarPct}% · <span style={{ color: statusColor, fontWeight: 600 }}>
+                            {status === 'ok' ? t.allocate.onTrack : status === 'over' ? t.allocate.over(diff) : t.allocate.under(-diff)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {pillarItems.length === 0 && !editingAllocate && (
-                    <div style={{ fontSize: 12, color: C.inkMuted, fontStyle: 'italic', padding: '8px 0' }}>
-                      {lang === 'en' ? 'No items yet' : 'Nenhum item ainda'}
+                  {pillarItems.length === 0 && (
+                    <div style={{ paddingBottom: 4 }}>
+                      <div style={{ fontSize: 11, color: C.inkMuted, marginBottom: 8, fontStyle: 'italic' }}>
+                        {lang === 'en' ? 'Tap to add a starter item:' : 'Toque para adicionar um item:'}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {starters.map(s => (
+                          <button key={s.name} onClick={() => addItem(pillarKey, s)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, padding: '6px 10px', borderRadius: 999, border: `1px solid ${pillar.color}40`, background: pillar.color + '12', color: pillar.color, cursor: 'pointer', fontFamily: fontSans }}>
+                            <Plus size={11} /> {s.name}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
 
                   {pillarItems.map(item => {
+                    const isEditingItem = editingItemId === item.id;
                     const bm = getBenchmarkStatus(item, salary, country);
                     const pct = salary > 0 ? (item.amount / salary) * 100 : 0;
+                    const bmThreshold = bm?.threshold || 0;
+                    const bmFillPct = bmThreshold > 0 ? Math.min((pct / bmThreshold) * 100, 100) : 0;
                     return (
-                      <div key={item.id} style={s.itemRow}>
-                        <div style={s.rowIconBox}>{renderIcon(item.icon, 14, C.accent, 2)}</div>
-                        {editingAllocate ? (
-                          <input style={{ ...s.input, flex: 1, padding: '8px 12px', fontSize: 16, minWidth: 80 }} value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} />
-                        ) : (
-                          <div style={{ flex: 1 }}>
+                      <div key={item.id} style={{ padding: '12px 0', borderBottom: `1px solid ${C.lineSoft}` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={s.rowIconBox}>{renderIcon(item.icon, 14, C.accent, 2)}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
-                              {item.name}
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
                               {bm && item.amount > 0 && (
                                 <span style={s.benchmarkBadge(bm.status)}>
                                   <span style={s.benchmarkDot(bm.status)} />
@@ -2023,20 +2146,32 @@ export default function FinanceApp() {
                                 </span>
                               )}
                             </div>
-                            {bm && item.amount > 0 && (
-                              <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 3 }}>
-                                {t.allocate.benchmark}: {bm.invert ? `≥ ${bm.threshold}%` : `≤ ${bm.threshold}%`} · {bm.source}
-                              </div>
-                            )}
+                          </div>
+                          <MoneyInput value={item.amount} t={t} style={s.inputNum} onChange={(v) => updateItem(item.id, 'amount', v)} />
+                          <button onClick={() => setEditingItemId(isEditingItem ? null : item.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.inkMuted, padding: 4, display: 'flex', alignItems: 'center' }} aria-label={isEditingItem ? t.common.done : t.common.edit}>
+                            <ChevronRight size={16} style={{ transform: isEditingItem ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
+                          </button>
+                        </div>
+
+                        {/* Benchmark progress bar */}
+                        {bm && item.amount > 0 && bmThreshold > 0 && (
+                          <div style={{ marginTop: 6, paddingLeft: 36 }}>
+                            <div style={{ position: 'relative', height: 4, background: C.lineSoft, borderRadius: 2, overflow: 'hidden' }}>
+                              <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${bmFillPct}%`, background: bm.status === 'ok' ? C.accent : bm.status === 'warn' ? C.yellow : C.red, borderRadius: 2 }} />
+                            </div>
+                            <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 4 }}>
+                              {t.allocate.benchmark}: {bm.invert ? `≥ ${bm.threshold}%` : `≤ ${bm.threshold}%`} · {bm.source}
+                            </div>
                           </div>
                         )}
-                        <div style={{ textAlign: 'right' }}>
-                          <MoneyInput value={item.amount} t={t} style={s.inputNum} onChange={(v) => updateItem(item.id, 'amount', v)} />
-                        </div>
-                        {editingAllocate && (
-                          <button onClick={() => removeItem(item.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.red, padding: 4 }}>
-                            <Trash2 size={14} />
-                          </button>
+
+                        {isEditingItem && (
+                          <div style={{ paddingLeft: 36, marginTop: 10 }}>
+                            <input style={{ ...s.input, padding: '8px 12px', fontSize: 16, marginBottom: 8 }} value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} />
+                            <button onClick={() => { removeItem(item.id); setEditingItemId(null); }} style={{ background: 'transparent', border: `1px solid ${C.lineSoft}`, color: C.red, padding: '8px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: fontSans, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <Trash2 size={13} /> {t.common.delete}
+                            </button>
+                          </div>
                         )}
                       </div>
                     );
