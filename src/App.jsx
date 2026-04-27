@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
+import { XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart, CartesianGrid, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import {
   Home as HomeIcon, Target, Wallet, TrendingUp, User, Plus, Trash2, Pencil, Languages,
   Sparkles, Check, X, ChevronRight, ChevronLeft, Plane, Shield, Car, ShoppingBag, CreditCard,
@@ -204,8 +204,11 @@ const copy = {
       tapYear: 'Tap a year to see months',
       totalContrib: 'Contributed',
       interestEarned: 'Interest',
+      priceGrowth: 'Price growth',
+      dividendReinvested: 'Dividend reinvested',
       filterAll: 'All',
       filterBy: 'View',
+      composition: 'Composition over time',
     },
     profile: {
       title: 'Profile',
@@ -413,6 +416,9 @@ const copy = {
       tapYear: 'Toque num ano pra ver os meses',
       totalContrib: 'Aportado',
       interestEarned: 'Juros',
+      priceGrowth: 'Crescimento',
+      dividendReinvested: 'Dividendos reinvestidos',
+      composition: 'Composição ao longo do tempo',
       filterAll: 'Todos',
       filterBy: 'Ver',
     },
@@ -564,8 +570,9 @@ function projectWealth(buckets, years, extraMonthly = 0) {
   return points;
 }
 
-// Month-by-month projection. Returns an array of { monthIndex, year, month, total, contributed, interest }
-// starting from month 0 (today) to months = years*12
+// Month-by-month projection. Returns an array of points with the running total,
+// cumulative contributions, the value of each bucket, and the price-growth vs
+// dividend portions earned that month (both reinvested into the bucket).
 function projectWealthMonthly(buckets, years, extraMonthly = 0) {
   const months = years * 12;
   const startDate = new Date();
@@ -574,29 +581,47 @@ function projectWealthMonthly(buckets, years, extraMonthly = 0) {
   const extraShare = state.length > 0 ? extraMonthly / state.length : 0;
   const monthlyContribBase = buckets.reduce((sum, b) => sum + (Number(b.monthly) || 0), 0) + extraMonthly;
 
+  const initialByBucket = {};
+  state.forEach(b => { initialByBucket[b.id] = b.value; });
+
   const points = [{
     monthIndex: 0,
     year: startDate.getFullYear(),
     month: startDate.getMonth(),
     total: initialTotal,
     cumulativeContributed: 0,
+    byBucket: initialByBucket,
+    priceGrowthThisMonth: 0,
+    dividendThisMonth: 0,
   }];
 
   let cumContrib = 0;
   for (let m = 1; m <= months; m++) {
+    let priceGrowthThisMonth = 0;
+    let dividendThisMonth = 0;
     state.forEach(b => {
-      const monthlyRate = ((Number(b.growth) || 0) + (Number(b.dividend) || 0)) / 100 / 12;
-      b.value = b.value * (1 + monthlyRate) + (Number(b.monthly) || 0) + extraShare;
+      const priceRate = (Number(b.growth) || 0) / 100 / 12;
+      const divRate = (Number(b.dividend) || 0) / 100 / 12;
+      const priceGrowth = b.value * priceRate;
+      const dividend = b.value * divRate;
+      priceGrowthThisMonth += priceGrowth;
+      dividendThisMonth += dividend;
+      b.value = b.value + priceGrowth + dividend + (Number(b.monthly) || 0) + extraShare;
     });
     cumContrib += monthlyContribBase;
     const d = new Date(startDate.getFullYear(), startDate.getMonth() + m, 1);
     const total = state.reduce((sum, b) => sum + b.value, 0);
+    const byBucket = {};
+    state.forEach(b => { byBucket[b.id] = b.value; });
     points.push({
       monthIndex: m,
       year: d.getFullYear(),
       month: d.getMonth(),
       total,
       cumulativeContributed: cumContrib,
+      byBucket,
+      priceGrowthThisMonth,
+      dividendThisMonth,
     });
   }
   return points;
@@ -954,31 +979,34 @@ export default function FinanceApp() {
   // Forecast data: monthly projection up to forecastYears, grouped by year
   // Filters based on forecastBucketId ('all' or a bucket id)
   const forecastData = useMemo(() => {
-    if (buckets.length === 0) return { months: [], years: [] };
+    if (buckets.length === 0) return { months: [], years: [], filteredBuckets: [] };
     const filteredBuckets = forecastBucketId === 'all'
       ? buckets
       : buckets.filter(b => b.id === forecastBucketId);
-    if (filteredBuckets.length === 0) return { months: [], years: [] };
+    if (filteredBuckets.length === 0) return { months: [], years: [], filteredBuckets: [] };
     const months = projectWealthMonthly(filteredBuckets, forecastYears, 0);
     // Group by year
     const yearMap = {};
     months.forEach(p => {
       if (!yearMap[p.year]) {
-        yearMap[p.year] = { year: p.year, months: [], startTotal: p.total, endTotal: p.total, startContrib: p.cumulativeContributed };
+        yearMap[p.year] = { year: p.year, months: [], startTotal: p.total, endTotal: p.total, startContrib: p.cumulativeContributed, priceGrowthThisYear: 0, dividendThisYear: 0 };
       }
-      yearMap[p.year].months.push(p);
-      yearMap[p.year].endTotal = p.total;
-      yearMap[p.year].endContrib = p.cumulativeContributed;
+      const yr = yearMap[p.year];
+      yr.months.push(p);
+      yr.endTotal = p.total;
+      yr.endContrib = p.cumulativeContributed;
+      yr.endByBucket = p.byBucket;
+      yr.priceGrowthThisYear += p.priceGrowthThisMonth;
+      yr.dividendThisYear += p.dividendThisMonth;
     });
     const years = Object.values(yearMap).sort((a, b) => a.year - b.year);
-    // Compute growth per year
     years.forEach((y, i) => {
       const prevEnd = i > 0 ? years[i - 1].endTotal : y.startTotal;
       y.growth = y.endTotal - prevEnd;
       y.contributedThisYear = y.endContrib - (i > 0 ? years[i - 1].endContrib : 0);
       y.interestThisYear = y.growth - y.contributedThisYear;
     });
-    return { months, years };
+    return { months, years, filteredBuckets };
   }, [buckets, forecastYears, forecastBucketId]);
 
   // ==================== ONBOARDING HELPERS ====================
@@ -2077,6 +2105,55 @@ export default function FinanceApp() {
                   </div>
                 </div>
 
+                {/* Composition bar chart */}
+                {forecastData.years.length > 0 && (() => {
+                  const chartBuckets = forecastData.filteredBuckets;
+                  const chartRows = forecastData.years.map(y => {
+                    const row = { year: String(y.year) };
+                    chartBuckets.forEach(b => { row[b.id] = (y.endByBucket && y.endByBucket[b.id]) || 0; });
+                    return row;
+                  });
+                  return (
+                    <div style={s.card}>
+                      <div style={{ ...s.cardLabel, marginBottom: 10 }}>{t.forecast.composition}</div>
+                      <div style={{ height: 200, marginLeft: -10 }}>
+                        <ResponsiveContainer>
+                          <BarChart data={chartRows} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                            <CartesianGrid stroke={C.lineSoft} vertical={false} />
+                            <XAxis dataKey="year" tick={{ fontSize: 10, fill: C.inkMuted }} axisLine={{ stroke: C.line }} tickLine={false} interval="preserveStartEnd" />
+                            <YAxis tick={{ fontSize: 10, fill: C.inkMuted }} axisLine={{ stroke: C.line }} tickLine={false} tickFormatter={(v) => fmtShort(v, t)} width={50} />
+                            <Tooltip
+                              cursor={{ fill: C.surfaceAlt }}
+                              formatter={(v, name) => [fmt(v, t), chartBuckets.find(b => b.id === name)?.name || name]}
+                              labelFormatter={(y) => `${t.common.year}${y}`}
+                              contentStyle={{ background: C.ink, border: 'none', borderRadius: 10, color: C.surface, fontFamily: fontSans, fontSize: 11 }}
+                            />
+                            {chartBuckets.map((b, i) => (
+                              <Bar
+                                key={b.id}
+                                dataKey={b.id}
+                                stackId="wealth"
+                                fill={BUCKET_COLORS[b.type] || C.inkMuted}
+                                radius={i === chartBuckets.length - 1 ? [4, 4, 0, 0] : 0}
+                              />
+                            ))}
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      {chartBuckets.length > 1 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.lineSoft}` }}>
+                          {chartBuckets.map(b => (
+                            <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: C.inkSoft }}>
+                              <span style={{ width: 10, height: 10, borderRadius: 3, background: BUCKET_COLORS[b.type] || C.inkMuted }} />
+                              {b.name}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Hint */}
                 <div style={{ fontSize: 11, color: C.inkMuted, textAlign: 'center', padding: '0 0 8px', fontStyle: 'italic' }}>
                   {t.forecast.tapYear}
@@ -2129,14 +2206,18 @@ export default function FinanceApp() {
                         {isExpanded && (
                           <div style={{ padding: '4px 6px 14px', background: C.accentSoft, borderRadius: 8, marginBottom: 6, borderBottom: idx < forecastData.years.length - 1 ? `1px solid ${C.lineSoft}` : 'none' }}>
                             {/* Year summary */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px 10px', marginBottom: 4 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, padding: '6px 8px 10px', marginBottom: 4 }}>
                               <div>
                                 <div style={{ fontSize: 9, color: C.inkMuted, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>{t.forecast.totalContrib}</div>
                                 <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{fmtShort(yearData.contributedThisYear, t)}</div>
                               </div>
+                              <div>
+                                <div style={{ fontSize: 9, color: C.inkMuted, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>{t.forecast.priceGrowth}</div>
+                                <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums', marginTop: 2, color: C.accent }}>{fmtShort(yearData.priceGrowthThisYear, t)}</div>
+                              </div>
                               <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: 9, color: C.inkMuted, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>{t.forecast.interestEarned}</div>
-                                <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums', marginTop: 2, color: C.accent }}>{fmtShort(yearData.interestThisYear, t)}</div>
+                                <div style={{ fontSize: 9, color: C.inkMuted, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>{t.forecast.dividendReinvested}</div>
+                                <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums', marginTop: 2, color: C.accent }}>{fmtShort(yearData.dividendThisYear, t)}</div>
                               </div>
                             </div>
 
