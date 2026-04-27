@@ -4,7 +4,7 @@ import {
   Home as HomeIcon, Target, Wallet, TrendingUp, User, Plus, Trash2, Pencil, Languages,
   Sparkles, Check, X, ChevronRight, ChevronLeft, Plane, Shield, Car, ShoppingBag, CreditCard,
   BarChart3, PiggyBank, Heart, Gem, Circle, Globe, RotateCcw, ArrowRight, LineChart as LineChartIcon,
-  AlertCircle, Settings
+  AlertCircle, Settings, ArrowDownUp
 } from 'lucide-react';
 
 // ============================================================
@@ -209,6 +209,13 @@ const copy = {
       riskScale: ['Safe', 'Defensive', 'Balanced', 'Aggressive', 'Speculative'],
       account: 'Account',
       accountOptional: 'optional (e.g. ISA, SIPP)',
+      categories: { equities: 'Equities', fixed: 'Fixed income', cash: 'Cash', alternatives: 'Alternatives' },
+      bucketCount: (n) => n === 1 ? '1 bucket' : `${n} buckets`,
+      deposit: 'Deposit',
+      withdraw: 'Withdraw',
+      apply: 'Apply',
+      moveAmount: 'Amount',
+      move: 'Move',
     },
     forecast: {
       title: 'Forecast',
@@ -443,6 +450,13 @@ const copy = {
       riskScale: ['Seguro', 'Defensivo', 'Balanceado', 'Agressivo', 'Especulativo'],
       account: 'Conta',
       accountOptional: 'opcional (ex: Tesouro, CDB)',
+      categories: { equities: 'Renda variável', fixed: 'Renda fixa', cash: 'Reserva', alternatives: 'Alternativos' },
+      bucketCount: (n) => n === 1 ? '1 balde' : `${n} baldes`,
+      deposit: 'Depositar',
+      withdraw: 'Retirar',
+      apply: 'Aplicar',
+      moveAmount: 'Valor',
+      move: 'Mover',
     },
     forecast: {
       title: 'Previsão',
@@ -702,6 +716,12 @@ function sharesByType(entries, valueKey) {
 // Implicit risk score (1 = safest, 5 = riskiest) per bucket type.
 const TYPE_RISK = { cash: 1, bonds: 2, pension: 2, reits: 3, other: 3, stocks: 4, crypto: 5 };
 
+// Map bucket types to broader display categories. Used to group the list once
+// the user has enough buckets that scanning becomes a chore.
+const CATEGORY_OF = { stocks: 'equities', reits: 'equities', bonds: 'fixed', pension: 'fixed', cash: 'cash', crypto: 'alternatives', other: 'alternatives' };
+const CATEGORY_ORDER = ['equities', 'fixed', 'cash', 'alternatives'];
+const GROUPING_THRESHOLD = 5;
+
 // Weighted-average risk from a shares-by-type map.
 function blendedRisk(sharesMap) {
   let weighted = 0, total = 0;
@@ -919,6 +939,9 @@ export default function FinanceApp() {
   const [editingAllocate, setEditingAllocate] = useState(false);
   const [editingBucketId, setEditingBucketId] = useState(null);
   const [pieExpanded, setPieExpanded] = useState(false);
+  const [txBucketId, setTxBucketId] = useState(null);
+  const [txMode, setTxMode] = useState('deposit');
+  const [txAmount, setTxAmount] = useState('');
   const [editingGoalId, setEditingGoalId] = useState(null);
   const [scenarioExtra, setScenarioExtra] = useState(0);
 
@@ -1566,6 +1589,21 @@ export default function FinanceApp() {
   const removeBucket = (id) => {
     setBuckets(buckets.filter(b => b.id !== id));
     if (editingBucketId === id) setEditingBucketId(null);
+    if (txBucketId === id) setTxBucketId(null);
+  };
+
+  const applyTx = (id) => {
+    const amt = Number(txAmount);
+    if (!amt || amt <= 0) return;
+    const delta = txMode === 'withdraw' ? -amt : amt;
+    setBuckets(buckets.map(b => {
+      if (b.id !== id) return b;
+      const newCurrent = Math.max(0, (Number(b.current) || 0) + delta);
+      const entry = { ts: Date.now(), delta, balanceAfter: newCurrent };
+      return { ...b, current: newCurrent, lastUpdated: Date.now(), history: [...(b.history || []), entry] };
+    }));
+    setTxBucketId(null);
+    setTxAmount('');
   };
   const addBucket = () => {
     const id = Math.random().toString(36);
@@ -2130,22 +2168,21 @@ export default function FinanceApp() {
               );
             })()}
 
-            <div style={s.card}>
-              <div style={{ ...s.cardLabel, marginBottom: 4 }}>{t.nav.wealth}</div>
-
-              {buckets.map(b => {
+            {(() => {
+              const renderBucketRow = (b) => {
                 const isEditing = editingBucketId === b.id;
+                const isTx = txBucketId === b.id;
                 const color = BUCKET_COLORS[b.type] || C.inkMuted;
                 const sharePct = totalWealth > 0 ? (Number(b.current) || 0) / totalWealth * 100 : 0;
                 const updatedAge = b.lastUpdated ? Date.now() - b.lastUpdated : 0;
                 const stale = updatedAge > 30 * 86_400_000;
                 return (
                   <div key={b.id} style={{ padding: '14px 0', borderBottom: `1px solid ${C.lineSoft}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{ width: 36, height: 36, borderRadius: 10, background: color + '30', display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
                         {b.name.charAt(0).toUpperCase()}
                       </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ flex: 1, minWidth: 0, marginLeft: 4 }}>
                         <div style={{ fontSize: 15, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</span>
                           {b.account && (
@@ -2155,6 +2192,9 @@ export default function FinanceApp() {
                         <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 2 }}>{t.wealth.monthly} {fmt(b.monthly, t)} · {b.growth}%{Number(b.dividend) > 0 ? ` + ${b.dividend}% div` : ''}/yr</div>
                       </div>
                       <input type="number" inputMode="decimal" style={s.inputNum} value={b.current || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'current', e.target.value)} />
+                      <button onClick={() => { setTxBucketId(isTx ? null : b.id); setTxMode('deposit'); setTxAmount(''); }} style={{ background: isTx ? color + '20' : 'transparent', border: 'none', cursor: 'pointer', color: isTx ? color : C.inkMuted, padding: 6, borderRadius: 8, display: 'flex', alignItems: 'center' }} aria-label={t.wealth.move}>
+                        <ArrowDownUp size={14} />
+                      </button>
                       <button onClick={() => setEditingBucketId(isEditing ? null : b.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.inkMuted, padding: 4, display: 'flex', alignItems: 'center' }} aria-label={isEditing ? t.common.done : t.common.edit}>
                         <ChevronRight size={16} style={{ transform: isEditing ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
                       </button>
@@ -2170,6 +2210,25 @@ export default function FinanceApp() {
                         <div style={{ height: '100%', width: `${Math.min(sharePct, 100)}%`, background: color, borderRadius: 2 }} />
                       </div>
                     </div>
+
+                    {/* Deposit / Withdraw quick panel */}
+                    {isTx && (
+                      <div style={{ marginTop: 12, padding: 12, background: C.surfaceAlt, borderRadius: 12, marginLeft: 48 }}>
+                        <div style={{ display: 'flex', gap: 3, background: C.surface, padding: 3, borderRadius: 999, marginBottom: 10 }}>
+                          {['deposit', 'withdraw'].map(m => (
+                            <button key={m} onClick={() => setTxMode(m)} style={{ flex: 1, padding: '6px 10px', border: 'none', borderRadius: 999, cursor: 'pointer', fontFamily: fontSans, fontSize: 12, fontWeight: 600, background: txMode === m ? (m === 'deposit' ? C.accent : C.red) : 'transparent', color: txMode === m ? C.surface : C.inkSoft }}>
+                              {m === 'deposit' ? t.wealth.deposit : t.wealth.withdraw}
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <input type="number" inputMode="decimal" autoFocus style={{ ...s.inputNum, flex: 1, width: 'auto', textAlign: 'left' }} value={txAmount} placeholder={t.wealth.moveAmount} onChange={(e) => setTxAmount(e.target.value)} />
+                          <button onClick={() => applyTx(b.id)} disabled={!Number(txAmount)} style={{ background: !Number(txAmount) ? C.line : (txMode === 'deposit' ? C.accent : C.red), color: C.surface, border: 'none', padding: '0 16px', borderRadius: 10, fontFamily: fontSans, fontSize: 13, fontWeight: 600, cursor: !Number(txAmount) ? 'default' : 'pointer' }}>
+                            {t.wealth.apply}
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {isEditing && (
                       <div style={{ paddingLeft: 48, marginTop: 12 }}>
@@ -2202,11 +2261,35 @@ export default function FinanceApp() {
                     )}
                   </div>
                 );
-              })}
-              <button style={{ ...s.ghostBtn, marginTop: 14, border: `1px dashed ${C.line}`, borderRadius: 10, padding: '10px 14px', width: '100%', justifyContent: 'center' }} onClick={addBucket}>
-                <Plus size={13} /> {t.wealth.addBucket}
-              </button>
-            </div>
+              };
+
+              const grouped = buckets.length >= GROUPING_THRESHOLD;
+              return (
+                <div style={s.card}>
+                  <div style={{ ...s.cardLabel, marginBottom: 4 }}>{t.nav.wealth}</div>
+                  {grouped ? CATEGORY_ORDER.map(cat => {
+                    const items = buckets.filter(b => CATEGORY_OF[b.type] === cat);
+                    if (items.length === 0) return null;
+                    const subtotal = items.reduce((sum, b) => sum + (Number(b.current) || 0), 0);
+                    return (
+                      <div key={cat}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0 6px', marginTop: 8, borderTop: `1px solid ${C.line}` }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: C.ink, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{t.wealth.categories[cat]}</span>
+                            <span style={{ fontSize: 10, color: C.inkMuted }}>{t.wealth.bucketCount(items.length)}</span>
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmtShort(subtotal, t)}</span>
+                        </div>
+                        {items.map(renderBucketRow)}
+                      </div>
+                    );
+                  }) : buckets.map(renderBucketRow)}
+                  <button style={{ ...s.ghostBtn, marginTop: 14, border: `1px dashed ${C.line}`, borderRadius: 10, padding: '10px 14px', width: '100%', justifyContent: 'center' }} onClick={addBucket}>
+                    <Plus size={13} /> {t.wealth.addBucket}
+                  </button>
+                </div>
+              );
+            })()}
           </>
         )}
 
