@@ -2169,7 +2169,7 @@ export default function FinanceApp() {
                         </div>
 
                         {/* Benchmark progress bar (when item has a benchmark) */}
-                        {bm && item.amount > 0 && bmThreshold > 0 && (
+                        {bm && bmThreshold > 0 && (
                           <div style={{ marginTop: 8, paddingLeft: 36 }}>
                             <div style={{ position: 'relative', height: 4, background: C.lineSoft, borderRadius: 2 }}>
                               <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${bmFillPct}%`, background: barColor, borderRadius: 2 }} />
