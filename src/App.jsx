@@ -1631,7 +1631,7 @@ export default function FinanceApp() {
     main: { maxWidth: 640, margin: '0 auto', padding: '20px 20px' },
 
     // Onboarding
-    onboardMain: { maxWidth: 480, margin: '0 auto', padding: '30px 24px 140px', display: 'flex', flexDirection: 'column' },
+    onboardMain: { maxWidth: 480, margin: '0 auto', padding: '30px 24px 200px', display: 'flex', flexDirection: 'column' },
     dots: { display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 36 },
     dot: (active) => ({ width: active ? 22 : 6, height: 6, borderRadius: 3, background: active ? C.accent : C.line, transition: 'all 0.3s' }),
     onboardEyebrow: { fontSize: 11, color: C.accent, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', textAlign: 'center', marginBottom: 12 },
@@ -1925,6 +1925,9 @@ export default function FinanceApp() {
             );
           })()}
         </div>
+
+        {/* Fade backdrop so scrolled content doesn't show under the CTA */}
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, height: 220, background: `linear-gradient(to top, ${C.bg} 60%, ${C.bg}00)`, pointerEvents: 'none', zIndex: 19 }} />
 
         <div style={s.bottomCTA}>
           <button style={s.ctaBtn(!canAdvance())} onClick={handleNext} disabled={!canAdvance()}>
