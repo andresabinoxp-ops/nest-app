@@ -2150,7 +2150,7 @@ export default function FinanceApp() {
                           </button>
                         </div>
 
-                        {/* Benchmark progress bar */}
+                        {/* Benchmark progress bar (when item has a benchmark) */}
                         {bm && item.amount > 0 && bmThreshold > 0 && (
                           <div style={{ marginTop: 8, paddingLeft: 36 }}>
                             <div style={{ position: 'relative', height: 4, background: C.lineSoft, borderRadius: 2 }}>
@@ -2160,6 +2160,13 @@ export default function FinanceApp() {
                             <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 4 }}>
                               <span style={{ color: barColor, fontWeight: 600 }}>{bm.pct}%</span> · {t.allocate.benchmark} {bm.invert ? `≥ ${bm.threshold}%` : `≤ ${bm.threshold}%`} · {bm.source}
                             </div>
+                          </div>
+                        )}
+
+                        {/* Non-benchmarked items still show share of income for context */}
+                        {!bm && item.amount > 0 && salary > 0 && (
+                          <div style={{ marginTop: 6, paddingLeft: 36, fontSize: 10, color: C.inkMuted, fontWeight: 500 }}>
+                            {pct.toFixed(pct < 1 ? 1 : 0)}% · {pillar.name}
                           </div>
                         )}
 
