@@ -2131,21 +2131,18 @@ export default function FinanceApp() {
                     const bm = getBenchmarkStatus(item, salary, country);
                     const pct = salary > 0 ? (item.amount / salary) * 100 : 0;
                     const bmThreshold = bm?.threshold || 0;
-                    const bmFillPct = bmThreshold > 0 ? Math.min((pct / bmThreshold) * 100, 100) : 0;
+                    const barColor = bm?.status === 'green' ? C.accent : bm?.status === 'yellow' ? C.yellow : C.red;
+                    // Scale the bar so the threshold sits ~70% across, giving
+                    // room to visualise going over without clipping.
+                    const scale = bmThreshold > 0 ? Math.max(bmThreshold * 1.4, pct * 1.05) : 0;
+                    const bmFillPct = scale > 0 ? Math.min((pct / scale) * 100, 100) : 0;
+                    const tickPct = scale > 0 ? (bmThreshold / scale) * 100 : 0;
                     return (
                       <div key={item.id} style={{ padding: '12px 0', borderBottom: `1px solid ${C.lineSoft}` }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <div style={s.rowIconBox}>{renderIcon(item.icon, 14, C.accent, 2)}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
-                              {bm && item.amount > 0 && (
-                                <span style={s.benchmarkBadge(bm.status)}>
-                                  <span style={s.benchmarkDot(bm.status)} />
-                                  {bm.pct}%
-                                </span>
-                              )}
-                            </div>
+                            <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.25, wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.name}</div>
                           </div>
                           <MoneyInput value={item.amount} t={t} style={s.inputNum} onChange={(v) => updateItem(item.id, 'amount', v)} />
                           <button onClick={() => setEditingItemId(isEditingItem ? null : item.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.inkMuted, padding: 4, display: 'flex', alignItems: 'center' }} aria-label={isEditingItem ? t.common.done : t.common.edit}>
@@ -2155,12 +2152,13 @@ export default function FinanceApp() {
 
                         {/* Benchmark progress bar */}
                         {bm && item.amount > 0 && bmThreshold > 0 && (
-                          <div style={{ marginTop: 6, paddingLeft: 36 }}>
-                            <div style={{ position: 'relative', height: 4, background: C.lineSoft, borderRadius: 2, overflow: 'hidden' }}>
-                              <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${bmFillPct}%`, background: bm.status === 'ok' ? C.accent : bm.status === 'warn' ? C.yellow : C.red, borderRadius: 2 }} />
+                          <div style={{ marginTop: 8, paddingLeft: 36 }}>
+                            <div style={{ position: 'relative', height: 4, background: C.lineSoft, borderRadius: 2 }}>
+                              <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${bmFillPct}%`, background: barColor, borderRadius: 2 }} />
+                              <div style={{ position: 'absolute', left: `${tickPct}%`, top: -2, width: 2, height: 8, background: C.ink, opacity: 0.55, borderRadius: 1 }} />
                             </div>
                             <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 4 }}>
-                              {t.allocate.benchmark}: {bm.invert ? `≥ ${bm.threshold}%` : `≤ ${bm.threshold}%`} · {bm.source}
+                              <span style={{ color: barColor, fontWeight: 600 }}>{bm.pct}%</span> · {t.allocate.benchmark} {bm.invert ? `≥ ${bm.threshold}%` : `≤ ${bm.threshold}%`} · {bm.source}
                             </div>
                           </div>
                         )}
