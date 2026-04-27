@@ -2202,6 +2202,8 @@ export default function FinanceApp() {
         )}
       </div>
 
+      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, height: 'calc(96px + env(safe-area-inset-bottom))', background: `linear-gradient(to top, ${C.bg} 55%, ${C.bg}00)`, pointerEvents: 'none', zIndex: 19 }} />
+
       <div style={s.bottomNav}>
         <button style={s.navBtn(tab === 'home')} onClick={() => setTab('home')}><HomeIcon size={17} strokeWidth={2} /></button>
         <button style={s.navBtn(tab === 'allocate')} onClick={() => setTab('allocate')}><Wallet size={17} strokeWidth={2} /></button>
