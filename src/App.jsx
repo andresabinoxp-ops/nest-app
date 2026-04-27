@@ -1631,7 +1631,7 @@ export default function FinanceApp() {
     main: { maxWidth: 640, margin: '0 auto', padding: '20px 20px' },
 
     // Onboarding
-    onboardMain: { maxWidth: 480, margin: '0 auto', padding: '0 24px 240px', display: 'flex', flexDirection: 'column' },
+    onboardMain: { maxWidth: 480, margin: '0 auto', padding: '0 24px 340px', display: 'flex', flexDirection: 'column' },
     onboardStickyHeader: { position: 'sticky', top: 0, background: C.bg, paddingTop: 'calc(20px + env(safe-area-inset-top))', paddingBottom: 14, margin: '0 -24px', paddingLeft: 24, paddingRight: 24, zIndex: 5 },
     dots: { display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 36 },
     dot: (active) => ({ width: active ? 22 : 6, height: 6, borderRadius: 3, background: active ? C.accent : C.line, transition: 'all 0.3s' }),
