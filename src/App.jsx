@@ -210,6 +210,7 @@ const copy = {
       account: 'Account',
       accountOptional: 'optional (e.g. ISA, SIPP)',
       categories: { equities: 'Equities', fixed: 'Fixed income', cash: 'Cash', alternatives: 'Alternatives' },
+      addShort: { equities: 'Equity', fixed: 'Fixed', cash: 'Cash', alternatives: 'Alt' },
       bucketCount: (n) => n === 1 ? '1 bucket' : `${n} buckets`,
       deposit: 'Deposit',
       withdraw: 'Withdraw',
@@ -451,6 +452,7 @@ const copy = {
       account: 'Conta',
       accountOptional: 'opcional (ex: Tesouro, CDB)',
       categories: { equities: 'Renda variável', fixed: 'Renda fixa', cash: 'Reserva', alternatives: 'Alternativos' },
+      addShort: { equities: 'Ações', fixed: 'Fixa', cash: 'Reserva', alternatives: 'Alt' },
       bucketCount: (n) => n === 1 ? '1 balde' : `${n} baldes`,
       deposit: 'Depositar',
       withdraw: 'Retirar',
@@ -1606,11 +1608,19 @@ export default function FinanceApp() {
     setTxBucketId(null);
     setTxAmount('');
   };
-  const addBucket = () => {
+  const addBucketOfType = (type) => {
+    const defaults = {
+      stocks: { name: 'Stocks / ETFs', growth: 7, dividend: 2 },
+      bonds: { name: 'Bonds', growth: 5, dividend: 0 },
+      cash: { name: 'Cash savings', growth: 4, dividend: 0 },
+      crypto: { name: 'Crypto', growth: 15, dividend: 0 },
+    };
+    const d = defaults[type] || { name: 'New', growth: 5, dividend: 0 };
     const id = Math.random().toString(36);
-    setBuckets([...buckets, { id, name: 'New', type: 'other', current: 0, monthly: 0, growth: 5, dividend: 0, lastUpdated: Date.now() }]);
+    setBuckets([...buckets, { id, name: d.name, type, current: 0, monthly: 0, growth: d.growth, dividend: d.dividend, lastUpdated: Date.now() }]);
     setEditingBucketId(id);
   };
+  const addBucket = () => addBucketOfType('other');
 
   const updateGoal = (id, field, value) => {
     setGoals(goals.map(g => g.id === id ? { ...g, [field]: ['target', 'current', 'monthly'].includes(field) ? (value === '' ? 0 : Number(value)) : value } : g));
@@ -2286,9 +2296,21 @@ export default function FinanceApp() {
                       </div>
                     );
                   }) : buckets.map(renderBucketRow)}
-                  <button style={{ ...s.ghostBtn, marginTop: 14, border: `1px dashed ${C.line}`, borderRadius: 10, padding: '10px 14px', width: '100%', justifyContent: 'center' }} onClick={addBucket}>
-                    <Plus size={13} /> {t.wealth.addBucket}
-                  </button>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 14 }}>
+                    {[
+                      { cat: 'equities', type: 'stocks' },
+                      { cat: 'fixed', type: 'bonds' },
+                      { cat: 'cash', type: 'cash' },
+                      { cat: 'alternatives', type: 'crypto' },
+                    ].map(({ cat, type }) => {
+                      const cc = CATEGORY_COLORS[cat];
+                      return (
+                        <button key={cat} onClick={() => addBucketOfType(type)} style={{ ...s.ghostBtn, flex: 1, border: `1px dashed ${cc}80`, color: cc, borderRadius: 10, padding: '10px 6px', justifyContent: 'center', fontSize: 11, fontWeight: 600, gap: 4 }}>
+                          <Plus size={12} /> {t.wealth.addShort[cat]}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })()}
