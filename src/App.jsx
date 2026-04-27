@@ -191,6 +191,20 @@ const copy = {
       growth: 'Growth',
       dividend: 'Dividend',
       diff10y: (amt) => `In 10 years, +${amt} vs. current plan.`,
+      ofTotal: 'of total',
+      allocBalance: 'Allocation vs your profile',
+      target: 'target',
+      onTrack: 'on track',
+      over: (n) => `+${n}% over`,
+      under: (n) => `-${n}% under`,
+      updated: 'Updated',
+      justNow: 'just now',
+      today: 'today',
+      daysAgo: (n) => `${n}d ago`,
+      weeksAgo: (n) => `${n}w ago`,
+      monthsAgo: (n) => `${n}mo ago`,
+      yearsAgo: (n) => `${n}y ago`,
+      types: { stocks: 'Stocks', crypto: 'Crypto', bonds: 'Bonds', cash: 'Cash', reits: 'REITs', pension: 'Pension', other: 'Other' },
     },
     forecast: {
       title: 'Forecast',
@@ -222,7 +236,7 @@ const copy = {
       resetConfirm: 'This will clear everything. Are you sure?',
       version: 'Version 1.0',
     },
-    common: { edit: 'Edit', done: 'Done', cancel: 'Cancel', save: 'Save', year: 'Y', today: 'today', daysAgo: (n) => `${n}d ago` },
+    common: { edit: 'Edit', done: 'Done', cancel: 'Cancel', save: 'Save', delete: 'Remove', year: 'Y', today: 'today', daysAgo: (n) => `${n}d ago` },
   },
   pt: {
     locale: 'pt-BR', currency: 'BRL', currencySymbol: 'R$', country: 'br',
@@ -404,6 +418,20 @@ const copy = {
       growth: 'Crescimento',
       dividend: 'Dividendo',
       diff10y: (amt) => `Em 10 anos, +${amt} vs. plano atual.`,
+      ofTotal: 'do total',
+      allocBalance: 'Alocação vs seu perfil',
+      target: 'alvo',
+      onTrack: 'no caminho',
+      over: (n) => `+${n}% acima`,
+      under: (n) => `-${n}% abaixo`,
+      updated: 'Atualizado',
+      justNow: 'agora',
+      today: 'hoje',
+      daysAgo: (n) => `há ${n}d`,
+      weeksAgo: (n) => `há ${n}sem`,
+      monthsAgo: (n) => `há ${n}m`,
+      yearsAgo: (n) => `há ${n}a`,
+      types: { stocks: 'Ações', crypto: 'Cripto', bonds: 'Renda fixa', cash: 'Reserva', reits: 'FIIs', pension: 'Previdência', other: 'Outros' },
     },
     forecast: {
       title: 'Previsão',
@@ -435,7 +463,7 @@ const copy = {
       resetConfirm: 'Isso vai apagar tudo. Tem certeza?',
       version: 'Versão 1.0',
     },
-    common: { edit: 'Editar', done: 'Pronto', cancel: 'Cancelar', save: 'Salvar', year: 'A', today: 'hoje', daysAgo: (n) => `há ${n}d` },
+    common: { edit: 'Editar', done: 'Pronto', cancel: 'Cancelar', save: 'Salvar', delete: 'Remover', year: 'A', today: 'hoje', daysAgo: (n) => `há ${n}d` },
   },
 };
 
@@ -627,6 +655,34 @@ function projectWealthMonthly(buckets, years, extraMonthly = 0) {
     });
   }
   return points;
+}
+
+// Relative-time formatter for "Updated X ago" stamps.
+function relativeTime(ts, t) {
+  if (!ts) return t.wealth.justNow;
+  const ms = Date.now() - ts;
+  if (ms < 60_000) return t.wealth.justNow;
+  const days = Math.floor(ms / 86_400_000);
+  if (days <= 0) return t.wealth.today;
+  if (days < 7) return t.wealth.daysAgo(days);
+  if (days < 30) return t.wealth.weeksAgo(Math.floor(days / 7));
+  if (days < 365) return t.wealth.monthsAgo(Math.floor(days / 30));
+  return t.wealth.yearsAgo(Math.floor(days / 365));
+}
+
+// Aggregate a list of {type, share|current} entries into a normalised
+// shares-by-type map summing to 1.
+function sharesByType(entries, valueKey) {
+  const totals = {};
+  let sum = 0;
+  entries.forEach(e => {
+    const v = Number(e[valueKey]) || 0;
+    totals[e.type] = (totals[e.type] || 0) + v;
+    sum += v;
+  });
+  if (sum === 0) return {};
+  Object.keys(totals).forEach(k => { totals[k] = totals[k] / sum; });
+  return totals;
 }
 
 // Benchmark status for an item
@@ -831,7 +887,8 @@ export default function FinanceApp() {
 
   // UI state — don't persist editing flags etc.
   const [editingAllocate, setEditingAllocate] = useState(false);
-  const [editingWealth, setEditingWealth] = useState(false);
+  const [editingBucketId, setEditingBucketId] = useState(null);
+  const [pieExpanded, setPieExpanded] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState(null);
   const [scenarioExtra, setScenarioExtra] = useState(0);
 
@@ -1035,6 +1092,7 @@ export default function FinanceApp() {
       current: 0,
       monthly: 0,
       dividend: 0,
+      lastUpdated: Date.now(),
     })));
 
     // Seed goals from saveFor picks
@@ -1456,12 +1514,16 @@ export default function FinanceApp() {
   };
 
   const updateBucket = (id, field, value) => {
-    setBuckets(buckets.map(b => b.id === id ? { ...b, [field]: ['current', 'monthly', 'growth', 'dividend'].includes(field) ? (value === '' ? 0 : Number(value)) : value } : b));
+    setBuckets(buckets.map(b => b.id === id ? { ...b, [field]: ['current', 'monthly', 'growth', 'dividend'].includes(field) ? (value === '' ? 0 : Number(value)) : value, lastUpdated: Date.now() } : b));
   };
-  const removeBucket = (id) => setBuckets(buckets.filter(b => b.id !== id));
+  const removeBucket = (id) => {
+    setBuckets(buckets.filter(b => b.id !== id));
+    if (editingBucketId === id) setEditingBucketId(null);
+  };
   const addBucket = () => {
-    setBuckets([...buckets, { id: Math.random().toString(36), name: 'New', type: 'other', current: 0, monthly: 0, growth: 5, dividend: 0 }]);
-    setEditingWealth(true);
+    const id = Math.random().toString(36);
+    setBuckets([...buckets, { id, name: 'New', type: 'other', current: 0, monthly: 0, growth: 5, dividend: 0, lastUpdated: Date.now() }]);
+    setEditingBucketId(id);
   };
 
   const updateGoal = (id, field, value) => {
@@ -1915,7 +1977,7 @@ export default function FinanceApp() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                 <div style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-0.02em' }}>{fmt(totalWealth, t)}</div>
                 {pieData.length > 0 && (
-                  <div style={{ width: 64, height: 64, flexShrink: 0 }}>
+                  <button onClick={() => setPieExpanded(!pieExpanded)} style={{ width: 64, height: 64, flexShrink: 0, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }} aria-label="Toggle composition">
                     <ResponsiveContainer>
                       <PieChart>
                         <Pie data={pieData} dataKey="value" innerRadius={20} outerRadius={30} paddingAngle={3} stroke="none">
@@ -1923,59 +1985,143 @@ export default function FinanceApp() {
                         </Pie>
                       </PieChart>
                     </ResponsiveContainer>
-                  </div>
+                  </button>
                 )}
               </div>
+              {pieExpanded && pieData.length > 0 && (
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid rgba(255,255,255,0.18)` }}>
+                  <div style={{ height: 180, marginLeft: -10, marginRight: -10 }}>
+                    <ResponsiveContainer>
+                      <PieChart>
+                        <Pie data={pieData} dataKey="value" innerRadius={50} outerRadius={80} paddingAngle={2} stroke="none">
+                          {pieData.map(d => <Cell key={d.key} fill={d.color} />)}
+                        </Pie>
+                        <Tooltip formatter={(v, name) => [fmt(v, t), name]} contentStyle={{ background: C.ink, border: 'none', borderRadius: 10, color: C.surface, fontFamily: fontSans, fontSize: 11 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginTop: 8 }}>
+                    {pieData.map(d => {
+                      const pct = totalWealth > 0 ? Math.round((d.value / totalWealth) * 100) : 0;
+                      return (
+                        <div key={d.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                          <span style={{ width: 10, height: 10, borderRadius: 3, background: d.color }} />
+                          <span style={{ opacity: 0.9 }}>{d.name}</span>
+                          <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div style={s.card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <div style={s.cardLabel}>{t.nav.wealth}</div>
-                <button style={s.ghostBtn} onClick={() => setEditingWealth(!editingWealth)}>
-                  {editingWealth ? <Check size={11} /> : <Pencil size={11} />}
-                  {editingWealth ? t.common.done : t.common.edit}
-                </button>
-              </div>
+            {/* Allocation balance vs investor profile */}
+            {totalWealth > 0 && investorProfile && (() => {
+              const profileBuckets = (PROFILE_BUCKETS[investorProfile] && PROFILE_BUCKETS[investorProfile][country]) || PROFILE_BUCKETS.balanced.uk;
+              const target = sharesByType(profileBuckets, 'share');
+              const current = sharesByType(buckets.map(b => ({ type: b.type, value: Number(b.current) || 0 })), 'value');
+              const types = Array.from(new Set([...Object.keys(target), ...Object.keys(current)]));
+              if (types.length === 0) return null;
+              return (
+                <div style={s.card}>
+                  <div style={{ ...s.cardLabel, marginBottom: 14 }}>{t.wealth.allocBalance}</div>
+                  {types.map(type => {
+                    const cur = Math.round((current[type] || 0) * 100);
+                    const tgt = Math.round((target[type] || 0) * 100);
+                    const diff = cur - tgt;
+                    const status = tgt === 0 ? null : Math.abs(diff) < 5 ? 'ok' : diff > 0 ? 'over' : 'under';
+                    const statusColor = status === 'ok' ? C.accent : status ? C.yellow : C.inkMuted;
+                    const color = BUCKET_COLORS[type] || C.inkMuted;
+                    return (
+                      <div key={type} style={{ marginBottom: 14 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                          <span style={{ width: 10, height: 10, borderRadius: 3, background: color, flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{t.wealth.types[type] || type}</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{cur}%</span>
+                        </div>
+                        <div style={{ position: 'relative', height: 6, background: C.lineSoft, borderRadius: 3 }}>
+                          <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(cur, 100)}%`, background: color, borderRadius: 3 }} />
+                          {tgt > 0 && <div style={{ position: 'absolute', left: `${Math.min(tgt, 100)}%`, top: -2, width: 2, height: 10, background: C.ink, borderRadius: 1 }} />}
+                        </div>
+                        {tgt > 0 && (
+                          <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 4 }}>
+                            {t.wealth.target} {tgt}% · <span style={{ color: statusColor, fontWeight: 600 }}>
+                              {status === 'ok' ? t.wealth.onTrack : status === 'over' ? t.wealth.over(diff) : t.wealth.under(-diff)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
-              {buckets.map(b => (
-                <div key={b.id} style={{ padding: '14px 0', borderBottom: `1px solid ${C.lineSoft}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: editingWealth ? 10 : 0 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: (BUCKET_COLORS[b.type] || C.inkMuted) + '30', display: 'flex', alignItems: 'center', justifyContent: 'center', color: BUCKET_COLORS[b.type] || C.inkMuted, fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-                      {b.name.charAt(0).toUpperCase()}
-                    </div>
-                    {editingWealth ? (
-                      <input style={{ ...s.input, flex: 1, padding: '8px 12px', fontSize: 16 }} value={b.name} onChange={(e) => updateBucket(b.id, 'name', e.target.value)} />
-                    ) : (
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 15, fontWeight: 500 }}>{b.name}</div>
+            <div style={s.card}>
+              <div style={{ ...s.cardLabel, marginBottom: 4 }}>{t.nav.wealth}</div>
+
+              {buckets.map(b => {
+                const isEditing = editingBucketId === b.id;
+                const color = BUCKET_COLORS[b.type] || C.inkMuted;
+                const sharePct = totalWealth > 0 ? (Number(b.current) || 0) / totalWealth * 100 : 0;
+                const updatedAge = b.lastUpdated ? Date.now() - b.lastUpdated : 0;
+                const stale = updatedAge > 30 * 86_400_000;
+                return (
+                  <div key={b.id} style={{ padding: '14px 0', borderBottom: `1px solid ${C.lineSoft}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: color + '30', display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                        {b.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 15, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
                         <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 2 }}>{t.wealth.monthly} {fmt(b.monthly, t)} · {b.growth}%{Number(b.dividend) > 0 ? ` + ${b.dividend}% div` : ''}/yr</div>
                       </div>
-                    )}
-                    <input type="number" inputMode="decimal" style={s.inputNum} value={b.current || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'current', e.target.value)} />
-                    {editingWealth && (
-                      <button onClick={() => removeBucket(b.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.red, padding: 4 }}><Trash2 size={14} /></button>
-                    )}
-                  </div>
-                  {editingWealth && (
-                    <div style={{ paddingLeft: 48 }}>
-                      <div style={{ marginBottom: 8 }}>
-                        <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.monthly}</div>
-                        <input type="number" inputMode="decimal" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={b.monthly || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'monthly', e.target.value)} />
+                      <input type="number" inputMode="decimal" style={s.inputNum} value={b.current || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'current', e.target.value)} />
+                      <button onClick={() => setEditingBucketId(isEditing ? null : b.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.inkMuted, padding: 4, display: 'flex', alignItems: 'center' }} aria-label={isEditing ? t.common.done : t.common.edit}>
+                        <ChevronRight size={16} style={{ transform: isEditing ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
+                      </button>
+                    </div>
+
+                    {/* Share + last-updated row */}
+                    <div style={{ paddingLeft: 48, marginTop: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, color: C.inkMuted, fontWeight: 600, letterSpacing: '0.05em', marginBottom: 4 }}>
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{sharePct.toFixed(0)}% {t.wealth.ofTotal}</span>
+                        <span style={{ color: stale ? C.yellow : C.inkMuted }}>{t.wealth.updated} {relativeTime(b.lastUpdated, t)}</span>
                       </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.growth} %</div>
-                          <input type="number" inputMode="decimal" step="0.1" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={b.growth || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'growth', e.target.value)} />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.dividend} %</div>
-                          <input type="number" inputMode="decimal" step="0.1" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={b.dividend || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'dividend', e.target.value)} />
-                        </div>
+                      <div style={{ height: 4, background: C.lineSoft, borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.min(sharePct, 100)}%`, background: color, borderRadius: 2 }} />
                       </div>
                     </div>
-                  )}
-                </div>
-              ))}
+
+                    {isEditing && (
+                      <div style={{ paddingLeft: 48, marginTop: 12 }}>
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.common.edit} {t.wealth.title}</div>
+                          <input style={{ ...s.input, padding: '8px 12px', fontSize: 16 }} value={b.name} onChange={(e) => updateBucket(b.id, 'name', e.target.value)} />
+                        </div>
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.monthly}</div>
+                          <input type="number" inputMode="decimal" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={b.monthly || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'monthly', e.target.value)} />
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.growth} %</div>
+                            <input type="number" inputMode="decimal" step="0.1" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={b.growth || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'growth', e.target.value)} />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.dividend} %</div>
+                            <input type="number" inputMode="decimal" step="0.1" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={b.dividend || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'dividend', e.target.value)} />
+                          </div>
+                        </div>
+                        <button onClick={() => removeBucket(b.id)} style={{ background: 'transparent', border: `1px solid ${C.lineSoft}`, color: C.red, padding: '8px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: fontSans, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <Trash2 size={13} /> {t.common.delete}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               <button style={{ ...s.ghostBtn, marginTop: 14, border: `1px dashed ${C.line}`, borderRadius: 10, padding: '10px 14px', width: '100%', justifyContent: 'center' }} onClick={addBucket}>
                 <Plus size={13} /> {t.wealth.addBucket}
               </button>
