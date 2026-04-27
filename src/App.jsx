@@ -138,6 +138,11 @@ const copy = {
       sendTo: (name) => `Send to ${name}`,
       templates: 'Or pick a template',
       lastMonth: (amt) => `Last month: ${amt}`,
+      planSaved: 'Plan saved',
+      recurring: 'Recurring',
+      oneOff: 'One-off this month',
+      oneOffTag: 'one-off',
+      ofTarget: 'of target',
       planHint: 'Nest is a planner. Set how your money flows each month.',
       saved: 'Saved for',
       smartCard: {
@@ -410,6 +415,11 @@ const copy = {
       sendTo: (name) => `Mandar pra ${name}`,
       templates: 'Ou escolha um modelo',
       lastMonth: (amt) => `Mês passado: ${amt}`,
+      planSaved: 'Plano salvo',
+      recurring: 'Recorrente',
+      oneOff: 'Só este mês',
+      oneOffTag: 'pontual',
+      ofTarget: 'do alvo',
       planHint: 'O Nest é um planejador. Defina como seu dinheiro flui a cada mês.',
       saved: 'Salvo em',
       smartCard: {
@@ -1134,6 +1144,7 @@ export default function FinanceApp() {
   const [pillarTargets, setPillarTargets] = useState(saved?.pillarTargets || {});
   const [editingPillarTarget, setEditingPillarTarget] = useState(null);
   const [surplusRedirectOpen, setSurplusRedirectOpen] = useState(false);
+  const [saveToast, setSaveToast] = useState(null);
 
   // UI state — don't persist editing flags etc.
   const [editingItemId, setEditingItemId] = useState(null);
@@ -1436,6 +1447,12 @@ export default function FinanceApp() {
       setCheckInStreak(1);
     }
     setLastCheckIn(now.toISOString());
+
+    // Show a confirmation toast with the pillar split
+    const pct = (n) => allocated > 0 ? Math.round((n / allocated) * 100) : 0;
+    const summary = `${pct(pillarTotals.needs)}/${pct(pillarTotals.wants)}/${pct(pillarTotals.wealth)}/${pct(pillarTotals.debt)}`;
+    setSaveToast(summary);
+    setTimeout(() => setSaveToast(null), 3500);
 
     // Smart Allocate→Wealth feed: map wealth items to matching buckets by type
     // Emergency fund → cash buckets · Savings → cash/bonds · Investments → stocks/reits/crypto
@@ -2207,6 +2224,16 @@ export default function FinanceApp() {
                     <div style={{ flex: 1 }}>
                       <div style={s.pillarName}>{pillar.name}</div>
                       <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 1 }}>{pillar.sub}</div>
+                      {targetAbs > 0 && (
+                        <div style={{ marginTop: 6 }}>
+                          <div style={{ height: 5, background: C.lineSoft, borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${Math.min((pillarTotal / targetAbs) * 100, 100)}%`, background: overTarget ? C.red : pillar.color, transition: 'width 0.2s' }} />
+                          </div>
+                          <div style={{ fontSize: 9, color: C.inkMuted, fontWeight: 600, marginTop: 3 }}>
+                            {Math.round((pillarTotal / targetAbs) * 100)}% {t.allocate.ofTarget}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div style={{ textAlign: 'right', minWidth: 0 }}>
                       <div style={s.pillarTotal}>
@@ -2275,7 +2302,10 @@ export default function FinanceApp() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <div style={s.rowIconBox}>{renderIcon(item.icon, 14, C.accent, 2)}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.25, wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.name}</div>
+                            <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.25, wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                              {item.name}
+                              {item.oneOff && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 4, background: pillar.color + '20', color: pillar.color, marginLeft: 6, verticalAlign: 'middle' }}>{t.allocate.oneOffTag}</span>}
+                            </div>
                           </div>
                           <MoneyInput value={item.amount} t={t} style={s.inputNum} onChange={(v) => updateItem(item.id, 'amount', v)} />
                           <button onClick={() => setEditingItemId(isEditingItem ? null : item.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.inkMuted, padding: 4, display: 'flex', alignItems: 'center' }} aria-label={isEditingItem ? t.common.done : t.common.edit}>
@@ -2351,6 +2381,17 @@ export default function FinanceApp() {
                                 </div>
                               </div>
                             )}
+                            {/* Recurring vs one-off toggle */}
+                            <div style={{ marginBottom: 10 }}>
+                              <div style={{ display: 'flex', gap: 4, background: C.surfaceAlt, padding: 3, borderRadius: 999 }}>
+                                <button onClick={() => updateItem(item.id, 'oneOff', false)} style={{ flex: 1, padding: '6px 10px', border: 'none', borderRadius: 999, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600, background: !item.oneOff ? C.accent : 'transparent', color: !item.oneOff ? C.surface : C.inkSoft }}>
+                                  {t.allocate.recurring}
+                                </button>
+                                <button onClick={() => updateItem(item.id, 'oneOff', true)} style={{ flex: 1, padding: '6px 10px', border: 'none', borderRadius: 999, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600, background: item.oneOff ? C.accent : 'transparent', color: item.oneOff ? C.surface : C.inkSoft }}>
+                                  {t.allocate.oneOff}
+                                </button>
+                              </div>
+                            </div>
                             <button onClick={() => { removeItem(item.id); setEditingItemId(null); }} style={{ background: 'transparent', border: `1px solid ${C.lineSoft}`, color: C.red, padding: '8px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: fontSans, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                               <Trash2 size={13} /> {t.common.delete}
                             </button>
@@ -3199,6 +3240,13 @@ export default function FinanceApp() {
         )}
       </div>
 
+      {saveToast && (
+        <div style={{ position: 'fixed', left: 14, right: 14, maxWidth: 440, margin: '0 auto', bottom: 'calc(82px + env(safe-area-inset-bottom))', zIndex: 25, background: C.ink, color: C.surface, padding: '12px 16px', borderRadius: 14, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', display: 'flex', alignItems: 'center', gap: 10, animation: 'fadeUp 0.3s ease-out' }}>
+          <Check size={16} color={C.accent} strokeWidth={3} />
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{t.allocate.planSaved}</span>
+          <span style={{ fontSize: 12, opacity: 0.7, fontVariantNumeric: 'tabular-nums', marginLeft: 'auto' }}>{saveToast}</span>
+        </div>
+      )}
       {!keyboardOpen && (
         <>
           <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, height: 'calc(96px + env(safe-area-inset-bottom))', background: `linear-gradient(to top, ${C.bg} 55%, ${C.bg}00)`, pointerEvents: 'none', zIndex: 19 }} />
