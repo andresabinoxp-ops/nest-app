@@ -1,0 +1,19 @@
+{
+  "name": "Nest",
+  "short_name": "Nest",
+  "description": "Plan. Grow. Reflect monthly.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F5F1",
+  "theme_color": "#2E8B88",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
