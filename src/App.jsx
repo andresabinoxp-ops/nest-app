@@ -1827,7 +1827,7 @@ export default function FinanceApp() {
               <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.85, marginBottom: 10 }}>{t.allocate.income}</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                 <span style={{ fontSize: 24, opacity: 0.7 }}>{t.currencySymbol}</span>
-                <input type="number" inputMode="decimal" value={salary || ''} onChange={(e) => setSalary(e.target.value === '' ? 0 : Number(e.target.value))} style={{ flex: 1, fontFamily: fontSans, fontSize: 32, fontWeight: 700, padding: 0, border: 'none', background: 'transparent', color: C.surface, outline: 'none', width: '100%', minWidth: 0, letterSpacing: '-0.02em' }} placeholder="0" />
+                <MoneyInput value={salary} t={t} style={{ flex: 1, fontFamily: fontSans, fontSize: 32, fontWeight: 700, padding: 0, border: 'none', background: 'transparent', color: C.surface, outline: 'none', width: '100%', minWidth: 0, letterSpacing: '-0.02em' }} onChange={(v) => setSalary(v)} />
               </div>
             </div>
 
@@ -2003,7 +2003,7 @@ export default function FinanceApp() {
                           </div>
                         )}
                         <div style={{ textAlign: 'right' }}>
-                          <input type="number" inputMode="decimal" style={s.inputNum} value={item.amount || ''} placeholder="0" onChange={(e) => updateItem(item.id, 'amount', e.target.value)} />
+                          <MoneyInput value={item.amount} t={t} style={s.inputNum} onChange={(v) => updateItem(item.id, 'amount', v)} />
                         </div>
                         {editingAllocate && (
                           <button onClick={() => removeItem(item.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.red, padding: 4 }}>
@@ -2089,15 +2089,15 @@ export default function FinanceApp() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 8 }}>
                       <div>
                         <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.goals.target}</div>
-                        <input type="number" inputMode="decimal" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={g.target || ''} onChange={(e) => updateGoal(g.id, 'target', e.target.value)} />
+                        <MoneyInput value={g.target} t={t} style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} onChange={(v) => updateGoal(g.id, 'target', v)} />
                       </div>
                       <div>
                         <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.goals.current}</div>
-                        <input type="number" inputMode="decimal" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={g.current || ''} onChange={(e) => updateGoal(g.id, 'current', e.target.value)} />
+                        <MoneyInput value={g.current} t={t} style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} onChange={(v) => updateGoal(g.id, 'current', v)} />
                       </div>
                       <div>
                         <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.goals.monthly}</div>
-                        <input type="number" inputMode="decimal" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={g.monthly || ''} onChange={(e) => updateGoal(g.id, 'monthly', e.target.value)} />
+                        <MoneyInput value={g.monthly} t={t} style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} onChange={(v) => updateGoal(g.id, 'monthly', v)} />
                       </div>
                       <div>
                         <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.goals.type}</div>
