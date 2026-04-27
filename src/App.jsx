@@ -219,6 +219,9 @@ const copy = {
       apply: 'Apply',
       moveAmount: 'Amount',
       move: 'Move',
+      recentActivity: 'Recent activity',
+      history: 'History',
+      noHistory: 'No transactions yet. Use the move button to log a deposit or withdrawal.',
     },
     forecast: {
       title: 'Forecast',
@@ -463,6 +466,9 @@ const copy = {
       apply: 'Aplicar',
       moveAmount: 'Valor',
       move: 'Mover',
+      recentActivity: 'Atividade recente',
+      history: 'Histórico',
+      noHistory: 'Sem transações ainda. Use o botão mover para registrar um depósito ou retirada.',
     },
     forecast: {
       title: 'Previsão',
@@ -612,6 +618,7 @@ const ICONS = {
 // Helpers
 const fmt = (n, t) => new Intl.NumberFormat(t.locale, { style: 'currency', currency: t.currency, maximumFractionDigits: 0 }).format(n || 0);
 const fmtNumber = (n, t) => new Intl.NumberFormat(t.locale, { maximumFractionDigits: 0 }).format(n || 0);
+const fmtShortDate = (ts, t) => new Intl.DateTimeFormat(t.locale, { day: 'numeric', month: 'short' }).format(new Date(ts));
 // Parse locale-formatted number string back to a number. Strips spaces and the
 // locale's thousands separator; treats the locale's decimal separator as '.'.
 function parseLocaleNumber(str, locale) {
@@ -2240,6 +2247,39 @@ export default function FinanceApp() {
               );
             })()}
 
+            {/* Recent activity across all buckets */}
+            {(() => {
+              const entries = buckets
+                .flatMap(b => (b.history || []).map(h => ({ ...h, bucketName: b.name, bucketColor: BUCKET_COLORS[b.type] || C.inkMuted, bucketId: b.id })))
+                .sort((a, b) => b.ts - a.ts)
+                .slice(0, 5);
+              if (entries.length === 0) return null;
+              return (
+                <div style={s.card}>
+                  <div style={{ ...s.cardLabel, marginBottom: 12 }}>{t.wealth.recentActivity}</div>
+                  {entries.map((e, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setEditingBucketId(e.bucketId)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 0', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', borderTop: i > 0 ? `1px solid ${C.lineSoft}` : 'none' }}
+                    >
+                      <span style={{ width: 8, height: 8, borderRadius: 4, background: e.bucketColor, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.bucketName}</div>
+                        <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 1 }}>{fmtShortDate(e.ts, t)}</div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: e.delta >= 0 ? C.accent : C.red }}>
+                          {e.delta >= 0 ? '+' : '-'}{fmt(Math.abs(e.delta), t)}
+                        </div>
+                        <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 1, fontVariantNumeric: 'tabular-nums' }}>{fmt(e.balanceAfter, t)}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+
             {(() => {
               const renderBucketRow = (b) => {
                 const isEditing = editingBucketId === b.id;
@@ -2369,6 +2409,26 @@ export default function FinanceApp() {
                               );
                             })}
                           </div>
+                        </div>
+                        <div style={{ marginBottom: 12, paddingTop: 12, borderTop: `1px solid ${C.lineSoft}` }}>
+                          <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.history}</div>
+                          {(b.history || []).length === 0 ? (
+                            <div style={{ fontSize: 11, color: C.inkMuted, lineHeight: 1.4, fontStyle: 'italic' }}>{t.wealth.noHistory}</div>
+                          ) : (
+                            <div>
+                              {[...b.history].reverse().slice(0, 10).map((h, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: i < Math.min(b.history.length, 10) - 1 ? `1px solid ${C.lineSoft}` : 'none' }}>
+                                  <div style={{ fontSize: 11, color: C.inkSoft }}>{fmtShortDate(h.ts, t)}</div>
+                                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                                    <span style={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: h.delta >= 0 ? C.accent : C.red }}>
+                                      {h.delta >= 0 ? '+' : '-'}{fmt(Math.abs(h.delta), t)}
+                                    </span>
+                                    <span style={{ fontSize: 11, color: C.inkMuted, fontVariantNumeric: 'tabular-nums' }}>→ {fmt(h.balanceAfter, t)}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <button onClick={() => removeBucket(b.id)} style={{ background: 'transparent', border: `1px solid ${C.lineSoft}`, color: C.red, padding: '8px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: fontSans, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           <Trash2 size={13} /> {t.common.delete}
