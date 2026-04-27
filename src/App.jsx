@@ -2255,7 +2255,7 @@ export default function FinanceApp() {
                         {b.name.charAt(0).toUpperCase()}
                       </div>
                       <div style={{ flex: 1, minWidth: 0, marginLeft: 4 }}>
-                        <div style={{ fontSize: 15, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
+                        <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.25, wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{b.name}</div>
                         <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           {b.account && (
                             <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 4, background: color + '20', color }}>{b.account}</span>
