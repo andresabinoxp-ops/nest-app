@@ -1831,36 +1831,35 @@ export default function FinanceApp() {
 
           {onboardStep === 4 && (
             <>
-              <h1 style={s.onboardTitle}>
+              <h1 style={{ ...s.onboardTitle, fontSize: 26, marginBottom: 6 }}>
                 {t.onboarding.profile.title}{' '}
                 <span style={s.onboardTitleBold}>{t.onboarding.profile.titleBold}</span>
               </h1>
-              <p style={s.onboardSub}>{t.onboarding.profile.sub}</p>
+              <p style={{ ...s.onboardSub, marginBottom: 16 }}>{t.onboarding.profile.sub}</p>
               {t.onboarding.profile.options.map(opt => {
                 const profileBuckets = (PROFILE_BUCKETS[opt.v] && PROFILE_BUCKETS[opt.v][country]) || [];
                 const totalShare = profileBuckets.reduce((sum, b) => sum + b.share, 0) || 1;
                 const sel = investorProfile === opt.v;
                 return (
-                  <div key={opt.v} style={{ ...s.optionCard(sel), alignItems: 'flex-start', flexDirection: 'column', gap: 0, padding: 14 }} onClick={() => setInvestorProfile(opt.v)}>
+                  <div key={opt.v} style={{ ...s.optionCard(sel), alignItems: 'flex-start', flexDirection: 'column', gap: 0, padding: 12, marginBottom: 8 }} onClick={() => setInvestorProfile(opt.v)}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
                       <div style={s.optionIconBox(sel)}>{renderIcon(opt.icon, 16, sel ? C.surface : C.inkSoft, 2)}</div>
                       <div style={{ ...s.optionLabel, flex: 1 }}>
                         <div style={s.optionLabelMain}>{opt.l}</div>
-                        <div style={s.optionLabelSub}>{opt.sub}</div>
                       </div>
                       <div style={s.optionCheck(sel)}>{sel && <Check size={12} color={C.surface} strokeWidth={3} />}</div>
                     </div>
                     {profileBuckets.length > 0 && (
-                      <div style={{ width: '100%', marginTop: 12, boxSizing: 'border-box' }}>
-                        <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: C.lineSoft }}>
+                      <div style={{ width: '100%', marginTop: 10, boxSizing: 'border-box' }}>
+                        <div style={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', background: C.lineSoft }}>
                           {profileBuckets.map((b, i) => (
                             <div key={i} style={{ width: `${(b.share / totalShare) * 100}%`, background: BUCKET_COLORS[b.type] || C.inkMuted }} />
                           ))}
                         </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6, fontSize: 10, color: C.inkMuted }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4, fontSize: 9, color: C.inkMuted }}>
                           {profileBuckets.map((b, i) => (
-                            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ width: 7, height: 7, borderRadius: 2, background: BUCKET_COLORS[b.type] || C.inkMuted }} />
+                            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                              <span style={{ width: 6, height: 6, borderRadius: 2, background: BUCKET_COLORS[b.type] || C.inkMuted }} />
                               {b.name} {Math.round(b.share * 100)}%
                             </span>
                           ))}
