@@ -1851,7 +1851,7 @@ export default function FinanceApp() {
                       <div style={s.optionCheck(sel)}>{sel && <Check size={12} color={C.surface} strokeWidth={3} />}</div>
                     </div>
                     {profileBuckets.length > 0 && (
-                      <div style={{ width: '100%', marginTop: 12, paddingLeft: 48 }}>
+                      <div style={{ width: '100%', marginTop: 12, boxSizing: 'border-box' }}>
                         <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: C.lineSoft }}>
                           {profileBuckets.map((b, i) => (
                             <div key={i} style={{ width: `${(b.share / totalShare) * 100}%`, background: BUCKET_COLORS[b.type] || C.inkMuted }} />
