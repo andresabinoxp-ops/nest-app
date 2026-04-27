@@ -127,6 +127,15 @@ const copy = {
       benchmarkPick: 'Compare to',
       benchmarkNone: 'None',
       benchmarkLabels: { housing: 'Housing', utilities: 'Utilities', groceries: 'Groceries', transport: 'Transport', lifestyle: 'Lifestyle', savings: 'Savings', emergency: 'Emergency', investments: 'Investments', debt: 'Debt' },
+      quickAdd: 'Quick add',
+      reset: 'Reset',
+      setTarget: 'Set target',
+      target: 'target',
+      surplusTitle: 'You have unassigned money',
+      surplusBody: (amt) => `${amt} is still unassigned. Where should it go?`,
+      surplusKeep: 'Save as is',
+      surplusSplit: 'Split across Wealth',
+      sendTo: (name) => `Send to ${name}`,
       planHint: 'Nest is a planner. Set how your money flows each month.',
       saved: 'Saved for',
       smartCard: {
@@ -388,6 +397,15 @@ const copy = {
       benchmarkPick: 'Comparar com',
       benchmarkNone: 'Nenhum',
       benchmarkLabels: { housing: 'Moradia', utilities: 'Contas', groceries: 'Mercado', transport: 'Transporte', lifestyle: 'Lazer', savings: 'Poupança', emergency: 'Reserva', investments: 'Investimentos', debt: 'Dívidas' },
+      quickAdd: 'Adicionar rápido',
+      reset: 'Zerar',
+      setTarget: 'Definir alvo',
+      target: 'alvo',
+      surplusTitle: 'Você ainda tem dinheiro sobrando',
+      surplusBody: (amt) => `${amt} ainda não foi alocado. Onde colocar?`,
+      surplusKeep: 'Salvar mesmo assim',
+      surplusSplit: 'Dividir no Patrimônio',
+      sendTo: (name) => `Mandar pra ${name}`,
       planHint: 'O Nest é um planejador. Defina como seu dinheiro flui a cada mês.',
       saved: 'Salvo em',
       smartCard: {
@@ -1091,6 +1109,10 @@ export default function FinanceApp() {
   const [checkInStreak, setCheckInStreak] = useState(saved?.checkInStreak || 0);
   // Target pillar percentages, set when the user applies a Smart Split.
   const [targetSplitPct, setTargetSplitPct] = useState(saved?.targetSplitPct || null);
+  // Manual pillar targets in absolute currency. Optional, top-down planning.
+  const [pillarTargets, setPillarTargets] = useState(saved?.pillarTargets || {});
+  const [editingPillarTarget, setEditingPillarTarget] = useState(null);
+  const [surplusRedirectOpen, setSurplusRedirectOpen] = useState(false);
 
   // UI state — don't persist editing flags etc.
   const [editingItemId, setEditingItemId] = useState(null);
@@ -1140,10 +1162,10 @@ export default function FinanceApp() {
       country, mainGoal, investorProfile, saveForPicks,
       salary, items, buckets, goals,
       snapshots, lastCheckIn, checkInStreak,
-      targetSplitPct,
+      targetSplitPct, pillarTargets,
     });
   }, [lang, phase, onboardStep, country, mainGoal, investorProfile, saveForPicks,
-      salary, items, buckets, goals, snapshots, lastCheckIn, checkInStreak, targetSplitPct]);
+      salary, items, buckets, goals, snapshots, lastCheckIn, checkInStreak, targetSplitPct, pillarTargets]);
 
   // ==================== DERIVED ====================
   const allocated = useMemo(() => items.reduce((sum, c) => sum + (Number(c.amount) || 0), 0), [items]);
@@ -1344,6 +1366,28 @@ export default function FinanceApp() {
     setTab('home');
   };
 
+  const sendSurplusToItem = (benchmarkKey) => {
+    if (unassigned <= 0) return;
+    const target = items.find(i => i.benchmarkKey === benchmarkKey);
+    if (!target) return;
+    setItems(items.map(i => i.id === target.id ? { ...i, amount: (Number(i.amount) || 0) + unassigned } : i));
+    setSurplusRedirectOpen(false);
+  };
+  const splitSurplusAcrossWealth = () => {
+    if (unassigned <= 0) return;
+    const wealthItems = items.filter(i => i.pillar === 'wealth');
+    if (wealthItems.length === 0) return;
+    const share = unassigned / wealthItems.length;
+    setItems(items.map(i => i.pillar === 'wealth' ? { ...i, amount: (Number(i.amount) || 0) + share } : i));
+    setSurplusRedirectOpen(false);
+  };
+  const handleSavePlan = () => {
+    if (unassigned > 0) {
+      setSurplusRedirectOpen(true);
+      return;
+    }
+    doCheckIn();
+  };
   const doCheckIn = () => {
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -2108,6 +2152,9 @@ export default function FinanceApp() {
               const status = diff == null ? null : Math.abs(diff) < 5 ? 'ok' : diff > 0 ? 'over' : 'under';
               const statusColor = status === 'ok' ? C.accent : status ? C.yellow : C.inkMuted;
               const starters = (STARTER_ITEMS[lang] || STARTER_ITEMS.en)[pillarKey] || [];
+              const targetAbs = Number(pillarTargets[pillarKey]) || 0;
+              const isEditingTarget = editingPillarTarget === pillarKey;
+              const overTarget = targetAbs > 0 && pillarTotal > targetAbs;
 
               return (
                 <div key={pillarKey} style={s.card}>
@@ -2117,14 +2164,32 @@ export default function FinanceApp() {
                       <div style={s.pillarName}>{pillar.name}</div>
                       <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 1 }}>{pillar.sub}</div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={s.pillarTotal}>{fmt(pillarTotal, t)}</div>
-                      {targetPct != null && pillarTotal > 0 && (
+                    <div style={{ textAlign: 'right', minWidth: 0 }}>
+                      <div style={s.pillarTotal}>
+                        <span style={{ color: overTarget ? C.red : C.ink }}>{fmt(pillarTotal, t)}</span>
+                        {targetAbs > 0 && <span style={{ color: C.inkMuted, fontWeight: 500 }}> / {fmt(targetAbs, t)}</span>}
+                      </div>
+                      {isEditingTarget ? (
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 4, justifyContent: 'flex-end' }}>
+                          <MoneyInput value={targetAbs} t={t} style={{ ...s.inputNum, width: 92, fontSize: 13, padding: '4px 8px' }} onChange={(v) => setPillarTargets({ ...pillarTargets, [pillarKey]: v })} />
+                          <button onClick={() => setEditingPillarTarget(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, color: C.accent, display: 'flex', alignItems: 'center' }}>
+                            <Check size={14} />
+                          </button>
+                        </div>
+                      ) : targetAbs > 0 ? (
+                        <button onClick={() => setEditingPillarTarget(pillarKey)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, color: C.inkMuted, fontSize: 10, fontFamily: fontSans, marginTop: 2 }}>
+                          {t.common.edit} {t.allocate.target}
+                        </button>
+                      ) : targetPct != null && pillarTotal > 0 ? (
                         <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 2 }}>
                           {pillarPct}% · <span style={{ color: statusColor, fontWeight: 600 }}>
                             {status === 'ok' ? t.allocate.onTrack : status === 'over' ? t.allocate.over(diff) : t.allocate.under(-diff)}
                           </span>
                         </div>
+                      ) : (
+                        <button onClick={() => setEditingPillarTarget(pillarKey)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, color: pillar.color, fontSize: 10, fontWeight: 600, fontFamily: fontSans, marginTop: 2 }}>
+                          {t.allocate.setTarget}
+                        </button>
                       )}
                     </div>
                   </div>
@@ -2196,6 +2261,19 @@ export default function FinanceApp() {
                         {isEditingItem && (
                           <div style={{ paddingLeft: 36, marginTop: 10 }}>
                             <input style={{ ...s.input, padding: '8px 12px', fontSize: 16, marginBottom: 10 }} value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} />
+                            <div style={{ marginBottom: 10 }}>
+                              <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.allocate.quickAdd}</div>
+                              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                {[25, 50, 100, 250, 500].map(d => (
+                                  <button key={d} onClick={() => updateItem(item.id, 'amount', (Number(item.amount) || 0) + d)} style={{ padding: '6px 10px', border: 'none', borderRadius: 999, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600, background: C.surfaceAlt, color: C.accent }}>
+                                    +{fmt(d, t)}
+                                  </button>
+                                ))}
+                                <button onClick={() => updateItem(item.id, 'amount', 0)} style={{ padding: '6px 10px', border: 'none', borderRadius: 999, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600, background: C.surfaceAlt, color: C.inkSoft, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                  <X size={11} /> {t.allocate.reset}
+                                </button>
+                              </div>
+                            </div>
                             {(PILLAR_BENCHMARKS[pillarKey] || []).length > 0 && (
                               <div style={{ marginBottom: 10 }}>
                                 <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.allocate.benchmarkPick}</div>
@@ -2252,7 +2330,7 @@ export default function FinanceApp() {
                 <span style={{ fontSize: 13, color: C.inkSoft }}>{unassigned < 0 ? t.allocate.overIncome : t.allocate.remaining}</span>
                 <span style={{ ...s.num, fontSize: 22, color: unassigned < 0 ? C.red : C.accent }}>{fmt(Math.abs(unassigned), t)}</span>
               </div>
-              <button style={{ ...s.primaryBtn, marginTop: 14, width: '100%', justifyContent: 'center' }} onClick={doCheckIn}>
+              <button style={{ ...s.primaryBtn, marginTop: 14, width: '100%', justifyContent: 'center' }} onClick={handleSavePlan}>
                 {t.allocate.savePlan}
               </button>
               {snapshots.length > 0 && (
@@ -2261,6 +2339,40 @@ export default function FinanceApp() {
                 </div>
               )}
             </div>
+
+            {/* Surplus redirect sheet */}
+            {surplusRedirectOpen && (() => {
+              const candidates = ['emergency', 'investments', 'savings']
+                .map(key => ({ key, item: items.find(i => i.benchmarkKey === key) }))
+                .filter(x => x.item);
+              const wealthItemsExist = items.some(i => i.pillar === 'wealth');
+              return (
+                <div onClick={() => setSurplusRedirectOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                  <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)' }}>
+                    <div style={{ width: 36, height: 4, background: C.line, borderRadius: 2, margin: '0 auto 16px' }} />
+                    <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 6 }}>{t.allocate.surplusTitle}</div>
+                    <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 14, lineHeight: 1.5 }}>{t.allocate.surplusBody(fmt(unassigned, t))}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {candidates.map(({ key, item }) => (
+                        <button key={key} onClick={() => { sendSurplusToItem(key); doCheckIn(); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, border: `1px solid ${C.line}`, background: C.surface, color: C.ink, cursor: 'pointer', fontFamily: fontSans, fontSize: 14, fontWeight: 600 }}>
+                          <span>{t.allocate.sendTo(item.name)}</span>
+                          <ArrowRight size={14} color={C.accent} />
+                        </button>
+                      ))}
+                      {wealthItemsExist && (
+                        <button onClick={() => { splitSurplusAcrossWealth(); doCheckIn(); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, border: `1px solid ${C.line}`, background: C.surface, color: C.ink, cursor: 'pointer', fontFamily: fontSans, fontSize: 14, fontWeight: 600 }}>
+                          <span>{t.allocate.surplusSplit}</span>
+                          <ArrowRight size={14} color={C.accent} />
+                        </button>
+                      )}
+                      <button onClick={() => { setSurplusRedirectOpen(false); doCheckIn(); }} style={{ padding: '12px 14px', borderRadius: 12, border: `1px solid ${C.lineSoft}`, background: 'transparent', color: C.inkSoft, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 600, marginTop: 4 }}>
+                        {t.allocate.surplusKeep}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </>
         )}
 
