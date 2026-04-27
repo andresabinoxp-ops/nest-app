@@ -1131,7 +1131,7 @@ export default function FinanceApp() {
 
   // ==================== STYLES ====================
   const s = {
-    app: { minHeight: '100vh', background: C.bg, color: C.ink, fontFamily: fontSans, paddingBottom: phase === 'app' ? 100 : 130, WebkitFontSmoothing: 'antialiased' },
+    app: { minHeight: '100dvh', background: C.bg, color: C.ink, fontFamily: fontSans, paddingBottom: phase === 'app' ? 'calc(100px + env(safe-area-inset-bottom))' : 'calc(130px + env(safe-area-inset-bottom))', WebkitFontSmoothing: 'antialiased' },
     topbar: { padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10, background: `${C.bg}F0`, backdropFilter: 'blur(10px)', borderBottom: `1px solid ${C.lineSoft}` },
     brandWrap: { display: 'flex', alignItems: 'center', gap: 8 },
     brandMark: { width: 26, height: 26, borderRadius: 7, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.surface, fontSize: 13, fontWeight: 700 },
@@ -1140,7 +1140,7 @@ export default function FinanceApp() {
     main: { maxWidth: 640, margin: '0 auto', padding: '20px 20px' },
 
     // Onboarding
-    onboardMain: { maxWidth: 480, margin: '0 auto', padding: '30px 24px 140px', minHeight: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' },
+    onboardMain: { maxWidth: 480, margin: '0 auto', padding: '30px 24px 140px', minHeight: 'calc(100dvh - 100px)', display: 'flex', flexDirection: 'column' },
     dots: { display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 36 },
     dot: (active) => ({ width: active ? 22 : 6, height: 6, borderRadius: 3, background: active ? C.accent : C.line, transition: 'all 0.3s' }),
     onboardEyebrow: { fontSize: 11, color: C.accent, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', textAlign: 'center', marginBottom: 12 },
@@ -1165,7 +1165,7 @@ export default function FinanceApp() {
     sub: { color: C.inkSoft, fontSize: 14, lineHeight: 1.5 },
 
     // Bottom nav
-    bottomNav: { position: 'fixed', bottom: 14, left: 14, right: 14, maxWidth: 440, margin: '0 auto', background: C.surface, borderRadius: 999, padding: 5, display: 'flex', gap: 2, zIndex: 20, border: `1px solid ${C.line}`, boxShadow: '0 8px 24px rgba(30,40,38,0.06)' },
+    bottomNav: { position: 'fixed', bottom: 'calc(14px + env(safe-area-inset-bottom))', left: 14, right: 14, maxWidth: 440, margin: '0 auto', background: C.surface, borderRadius: 999, padding: 5, display: 'flex', gap: 2, zIndex: 20, border: `1px solid ${C.line}`, boxShadow: '0 8px 24px rgba(30,40,38,0.06)' },
     navBtn: (active) => ({ flex: 1, background: active ? C.accent : 'transparent', color: active ? C.surface : C.inkMuted, border: 'none', padding: '10px 6px', borderRadius: 999, cursor: 'pointer', fontFamily: fontSans, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }),
 
     primaryBtn: { background: C.accent, color: C.surface, border: 'none', padding: '12px 20px', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: fontSans, display: 'inline-flex', alignItems: 'center', gap: 6 },
