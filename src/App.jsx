@@ -209,6 +209,7 @@ const copy = {
       filterAll: 'All',
       filterBy: 'View',
       composition: 'Composition over time',
+      diff: (amt, years) => <>Over {years}y, +{amt} vs. current plan.</>,
     },
     profile: {
       title: 'Profile',
@@ -419,6 +420,7 @@ const copy = {
       priceGrowth: 'Crescimento',
       dividendReinvested: 'Dividendos reinvestidos',
       composition: 'Composição ao longo do tempo',
+      diff: (amt, years) => <>Em {years}a, +{amt} vs. plano atual.</>,
       filterAll: 'Todos',
       filterBy: 'Ver',
     },
@@ -832,7 +834,6 @@ export default function FinanceApp() {
   const [editingWealth, setEditingWealth] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState(null);
   const [scenarioExtra, setScenarioExtra] = useState(0);
-  const [projectionYears, setProjectionYears] = useState(10);
 
   // Smart split flow — don't persist
   const [smartStep, setSmartStep] = useState(null);
@@ -877,8 +878,6 @@ export default function FinanceApp() {
   const unassigned = salary - allocated;
   const totalWealth = useMemo(() => buckets.reduce((sum, b) => sum + (Number(b.current) || 0), 0), [buckets]);
   const monthlyContrib = useMemo(() => buckets.reduce((sum, b) => sum + (Number(b.monthly) || 0), 0), [buckets]);
-  const baselineProj = useMemo(() => projectWealth(buckets, 20, 0), [buckets]);
-  const scenarioProj = useMemo(() => projectWealth(buckets, 20, scenarioExtra), [buckets, scenarioExtra]);
 
   // Monthly contribution from Allocate's Wealth pillar (auto-computed)
   const wealthFromAllocate = useMemo(() =>
@@ -977,14 +976,19 @@ export default function FinanceApp() {
   }, [historyIndex, snapshots, monthName, year, salary, allocated, items, totalWealth, t]);
 
   // Forecast data: monthly projection up to forecastYears, grouped by year
-  // Filters based on forecastBucketId ('all' or a bucket id)
+  // Filters based on forecastBucketId ('all' or a bucket id) and the
+  // scenarioExtra (extra monthly contribution from the What-if slider).
   const forecastData = useMemo(() => {
-    if (buckets.length === 0) return { months: [], years: [], filteredBuckets: [] };
+    if (buckets.length === 0) return { months: [], years: [], filteredBuckets: [], baselineFinal: 0, scenarioFinal: 0 };
     const filteredBuckets = forecastBucketId === 'all'
       ? buckets
       : buckets.filter(b => b.id === forecastBucketId);
-    if (filteredBuckets.length === 0) return { months: [], years: [], filteredBuckets: [] };
-    const months = projectWealthMonthly(filteredBuckets, forecastYears, 0);
+    if (filteredBuckets.length === 0) return { months: [], years: [], filteredBuckets: [], baselineFinal: 0, scenarioFinal: 0 };
+    const months = projectWealthMonthly(filteredBuckets, forecastYears, scenarioExtra);
+    const scenarioFinal = months[months.length - 1].total;
+    const baselineFinal = scenarioExtra > 0
+      ? projectWealthMonthly(filteredBuckets, forecastYears, 0).at(-1).total
+      : scenarioFinal;
     // Group by year
     const yearMap = {};
     months.forEach(p => {
@@ -1006,8 +1010,8 @@ export default function FinanceApp() {
       y.contributedThisYear = y.endContrib - (i > 0 ? years[i - 1].endContrib : 0);
       y.interestThisYear = y.growth - y.contributedThisYear;
     });
-    return { months, years, filteredBuckets };
-  }, [buckets, forecastYears, forecastBucketId]);
+    return { months, years, filteredBuckets, baselineFinal, scenarioFinal };
+  }, [buckets, forecastYears, forecastBucketId, scenarioExtra]);
 
   // ==================== ONBOARDING HELPERS ====================
   const finishOnboarding = () => {
@@ -1471,7 +1475,6 @@ export default function FinanceApp() {
   };
 
   const pieData = buckets.filter(b => b.current > 0).map(b => ({ name: b.name, value: Number(b.current), key: b.id, color: BUCKET_COLORS[b.type] || C.inkMuted }));
-  const chartData = baselineProj.map((pt, i) => ({ year: pt.year, baseline: Math.round(pt.total), scenario: Math.round(scenarioProj[i]?.total || pt.total) }));
   const maxExtra = Math.max(salary * 0.5, 500);
 
   // Group items by pillar
@@ -1977,68 +1980,6 @@ export default function FinanceApp() {
                 <Plus size={13} /> {t.wealth.addBucket}
               </button>
             </div>
-
-            {/* Projection */}
-            <div style={s.card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <div style={s.cardLabel}>{t.wealth.projection}</div>
-                <div style={{ display: 'flex', gap: 3, background: C.surfaceAlt, padding: 3, borderRadius: 999 }}>
-                  {[5, 10, 20].map(y => (
-                    <button key={y} style={{ padding: '5px 12px', border: 'none', borderRadius: 999, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600, background: projectionYears === y ? C.accent : 'transparent', color: projectionYears === y ? C.surface : C.inkSoft }} onClick={() => setProjectionYears(y)}>{y}{t.common.year}</button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ height: 220, marginLeft: -10 }}>
-                <ResponsiveContainer>
-                  <AreaChart data={chartData.slice(0, projectionYears + 1)}>
-                    <defs>
-                      <linearGradient id="baseGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={C.accent} stopOpacity={0.35} />
-                        <stop offset="100%" stopColor={C.accent} stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="scenGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={C.yellow} stopOpacity={0.35} />
-                        <stop offset="100%" stopColor={C.yellow} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke={C.lineSoft} vertical={false} />
-                    <XAxis dataKey="year" tick={{ fontSize: 10, fill: C.inkMuted }} axisLine={{ stroke: C.line }} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: C.inkMuted }} axisLine={{ stroke: C.line }} tickLine={false} tickFormatter={(v) => fmtShort(v, t)} width={50} />
-                    <Tooltip formatter={(v, name) => [fmt(v, t), name === 'baseline' ? t.wealth.baseline : t.wealth.scenario]} labelFormatter={(y) => `${t.common.year}${y}`} contentStyle={{ background: C.ink, border: 'none', borderRadius: 10, color: C.surface, fontFamily: fontSans, fontSize: 11 }} />
-                    {scenarioExtra > 0 && <Area type="monotone" dataKey="scenario" stroke={C.yellow} strokeWidth={2} strokeDasharray="5 4" fill="url(#scenGrad)" />}
-                    <Area type="monotone" dataKey="baseline" stroke={C.accent} strokeWidth={2.5} fill="url(#baseGrad)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div style={{ marginTop: 16, padding: 16, background: C.surfaceAlt, borderRadius: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                  <div>
-                    <div style={{ ...s.cardLabel, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Sparkles size={10} /> {t.wealth.whatIf}
-                    </div>
-                    <div style={{ fontSize: 12, color: C.inkSoft }}>{t.wealth.whatIfSub}</div>
-                  </div>
-                  {scenarioExtra > 0 && (
-                    <button style={s.ghostBtn} onClick={() => setScenarioExtra(0)}><X size={11} /> {t.wealth.reset}</button>
-                  )}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-                  <span style={{ fontSize: 11, color: C.inkSoft, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>{t.wealth.extra}</span>
-                  <span style={{ ...s.num, fontSize: 20, color: scenarioExtra > 0 ? C.yellow : C.ink }}>+{fmt(scenarioExtra, t)}</span>
-                </div>
-                <input type="range" min="0" max={maxExtra} step="10" value={scenarioExtra} onChange={(e) => setScenarioExtra(Number(e.target.value))} style={s.slider} />
-                {scenarioExtra > 0 && (() => {
-                  const diff = (scenarioProj[10]?.total || 0) - (baselineProj[10]?.total || 0);
-                  return (
-                    <div style={{ marginTop: 12, fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>
-                      {t.wealth.diff10y(<strong key="d" style={{ color: C.yellow, ...s.num }}>{fmtShort(diff, t)}</strong>)}
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
           </>
         )}
 
@@ -2103,6 +2044,31 @@ export default function FinanceApp() {
                       );
                     })}
                   </div>
+                </div>
+
+                {/* What-if: extra monthly contribution */}
+                <div style={{ ...s.card, padding: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                    <div>
+                      <div style={{ ...s.cardLabel, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Sparkles size={10} /> {t.wealth.whatIf}
+                      </div>
+                      <div style={{ fontSize: 12, color: C.inkSoft }}>{t.wealth.whatIfSub}</div>
+                    </div>
+                    {scenarioExtra > 0 && (
+                      <button style={s.ghostBtn} onClick={() => setScenarioExtra(0)}><X size={11} /> {t.wealth.reset}</button>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, color: C.inkSoft, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>{t.wealth.extra}</span>
+                    <span style={{ ...s.num, fontSize: 20, color: scenarioExtra > 0 ? C.yellow : C.ink }}>+{fmt(scenarioExtra, t)}</span>
+                  </div>
+                  <input type="range" min="0" max={maxExtra} step="10" value={scenarioExtra} onChange={(e) => setScenarioExtra(Number(e.target.value))} style={s.slider} />
+                  {scenarioExtra > 0 && (
+                    <div style={{ marginTop: 12, fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>
+                      {t.forecast.diff(<strong key="d" style={{ color: C.yellow, ...s.num }}>{fmtShort(forecastData.scenarioFinal - forecastData.baselineFinal, t)}</strong>, forecastYears)}
+                    </div>
+                  )}
                 </div>
 
                 {/* Composition bar chart */}
