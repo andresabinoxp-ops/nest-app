@@ -207,6 +207,8 @@ const copy = {
       types: { stocks: 'Stocks', crypto: 'Crypto', bonds: 'Bonds', cash: 'Cash', reits: 'REITs', pension: 'Pension', other: 'Other' },
       riskLabel: 'Portfolio risk',
       riskScale: ['Safe', 'Defensive', 'Balanced', 'Aggressive', 'Speculative'],
+      risk: 'Risk',
+      riskDefault: 'using type default',
       account: 'Account',
       accountOptional: 'optional (e.g. ISA, SIPP)',
       categories: { equities: 'Equities', fixed: 'Fixed income', cash: 'Cash', alternatives: 'Alternatives' },
@@ -449,6 +451,8 @@ const copy = {
       types: { stocks: 'Ações', crypto: 'Cripto', bonds: 'Renda fixa', cash: 'Reserva', reits: 'FIIs', pension: 'Previdência', other: 'Outros' },
       riskLabel: 'Risco da carteira',
       riskScale: ['Seguro', 'Defensivo', 'Balanceado', 'Agressivo', 'Especulativo'],
+      risk: 'Risco',
+      riskDefault: 'padrão do tipo',
       account: 'Conta',
       accountOptional: 'opcional (ex: Tesouro, CDB)',
       categories: { equities: 'Renda variável', fixed: 'Renda fixa', cash: 'Reserva', alternatives: 'Alternativos' },
@@ -715,8 +719,26 @@ function sharesByType(entries, valueKey) {
   return totals;
 }
 
-// Implicit risk score (1 = safest, 5 = riskiest) per bucket type.
+// Implicit risk score (1 = safest, 5 = riskiest) per bucket type. The user
+// can override per bucket via bucket.risk; this is the fallback default.
 const TYPE_RISK = { cash: 1, bonds: 2, pension: 2, reits: 3, other: 3, stocks: 4, crypto: 5 };
+
+function riskOf(bucket) {
+  const r = Number(bucket.risk);
+  return r >= 1 && r <= 5 ? r : (TYPE_RISK[bucket.type] ?? 3);
+}
+
+// Weighted risk across a list of buckets, using each bucket's effective risk.
+function blendedRiskFromBuckets(buckets) {
+  let weighted = 0, total = 0;
+  buckets.forEach(b => {
+    const value = Number(b.current) || 0;
+    if (value <= 0) return;
+    weighted += riskOf(b) * value;
+    total += value;
+  });
+  return total > 0 ? weighted / total : 0;
+}
 
 // Map bucket types to broader display categories. Used to group the list once
 // the user has enough buckets that scanning becomes a chore.
@@ -1587,7 +1609,7 @@ export default function FinanceApp() {
   };
 
   const updateBucket = (id, field, value) => {
-    setBuckets(buckets.map(b => b.id === id ? { ...b, [field]: ['current', 'monthly', 'growth', 'dividend'].includes(field) ? (value === '' ? 0 : Number(value)) : value, lastUpdated: Date.now() } : b));
+    setBuckets(buckets.map(b => b.id === id ? { ...b, [field]: ['current', 'monthly', 'growth', 'dividend', 'risk'].includes(field) ? (value === '' ? 0 : Number(value)) : value, lastUpdated: Date.now() } : b));
   };
   const removeBucket = (id) => {
     setBuckets(buckets.filter(b => b.id !== id));
@@ -2120,7 +2142,7 @@ export default function FinanceApp() {
               const current = sharesByType(buckets.map(b => ({ type: b.type, value: Number(b.current) || 0 })), 'value');
               const types = Array.from(new Set([...Object.keys(target), ...Object.keys(current)]));
               if (types.length === 0) return null;
-              const currentRisk = blendedRisk(current);
+              const currentRisk = blendedRiskFromBuckets(buckets);
               const targetRisk = blendedRisk(target);
               const riskPct = ((currentRisk - 1) / 4) * 100;
               const targetRiskPct = ((targetRisk - 1) / 4) * 100;
@@ -2200,7 +2222,7 @@ export default function FinanceApp() {
                           {b.account && (
                             <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 4, background: color + '20', color }}>{b.account}</span>
                           )}
-                          <span>{t.wealth.monthly} {fmt(b.monthly, t)} · {b.growth}%{Number(b.dividend) > 0 ? ` + ${b.dividend}% div` : ''}/yr</span>
+                          <span>{t.wealth.monthly} {fmt(b.monthly, t)} · {b.growth}%{Number(b.dividend) > 0 ? ` + ${b.dividend}% div` : ''}/yr{Number(b.risk) >= 1 && Number(b.risk) <= 5 ? ` · ${t.wealth.riskScale[Number(b.risk) - 1]}` : ''}</span>
                         </div>
                       </div>
                       <input type="number" inputMode="decimal" style={{ ...s.inputNum, width: 92 }} value={b.current || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'current', e.target.value)} />
@@ -2274,6 +2296,40 @@ export default function FinanceApp() {
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.dividend} %</div>
                             <input type="number" inputMode="decimal" step="0.1" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={b.dividend || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'dividend', e.target.value)} />
+                          </div>
+                        </div>
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>
+                            {t.wealth.risk}
+                            {!(Number(b.risk) >= 1 && Number(b.risk) <= 5) && (
+                              <span style={{ color: C.inkMuted, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> · {t.wealth.riskDefault}</span>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            {[1, 2, 3, 4, 5].map(r => {
+                              const explicit = Number(b.risk) === r;
+                              const effective = riskOf(b) === r;
+                              return (
+                                <button
+                                  key={r}
+                                  onClick={() => updateBucket(b.id, 'risk', explicit ? 0 : r)}
+                                  style={{
+                                    flex: 1,
+                                    padding: '8px 4px',
+                                    border: 'none',
+                                    borderRadius: 8,
+                                    background: explicit ? C.accent : effective ? C.accentSoft : C.surfaceAlt,
+                                    color: explicit ? C.surface : effective ? C.accent : C.inkSoft,
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    fontFamily: fontSans,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  {t.wealth.riskScale[r - 1]}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                         <button onClick={() => removeBucket(b.id)} style={{ background: 'transparent', border: `1px solid ${C.lineSoft}`, color: C.red, padding: '8px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: fontSans, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
