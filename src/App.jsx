@@ -123,6 +123,7 @@ const copy = {
       target: 'target',
       starterTitle: 'Quick start',
       moneyFlowEmpty: 'Add items below to see how your money is split.',
+      ofIncome: 'of income',
       planHint: 'Nest is a planner. Set how your money flows each month.',
       saved: 'Saved for',
       smartCard: {
@@ -380,6 +381,7 @@ const copy = {
       target: 'alvo',
       starterTitle: 'Início rápido',
       moneyFlowEmpty: 'Adicione itens abaixo para ver a divisão do seu dinheiro.',
+      ofIncome: 'da renda',
       planHint: 'O Nest é um planejador. Defina como seu dinheiro flui a cada mês.',
       saved: 'Salvo em',
       smartCard: {
@@ -2163,10 +2165,15 @@ export default function FinanceApp() {
                           </div>
                         )}
 
-                        {/* Non-benchmarked items still show share of income for context */}
+                        {/* Non-benchmarked items get a neutral bar showing share of income */}
                         {!bm && item.amount > 0 && salary > 0 && (
-                          <div style={{ marginTop: 6, paddingLeft: 36, fontSize: 10, color: C.inkMuted, fontWeight: 500 }}>
-                            {pct.toFixed(pct < 1 ? 1 : 0)}% · {pillar.name}
+                          <div style={{ marginTop: 8, paddingLeft: 36 }}>
+                            <div style={{ position: 'relative', height: 4, background: C.lineSoft, borderRadius: 2 }}>
+                              <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(pct, 100)}%`, background: C.inkMuted, borderRadius: 2 }} />
+                            </div>
+                            <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 4 }}>
+                              <span style={{ fontWeight: 600 }}>{pct.toFixed(pct < 1 ? 1 : 0)}%</span> {t.allocate.ofIncome}
+                            </div>
                           </div>
                         )}
 
