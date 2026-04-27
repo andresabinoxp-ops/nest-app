@@ -1645,7 +1645,8 @@ export default function FinanceApp() {
     optionLabelMain: { fontSize: 15, fontWeight: 500, color: C.ink },
     optionLabelSub: { fontSize: 12, color: C.inkMuted, marginTop: 2 },
     optionCheck: (selected) => ({ width: 22, height: 22, borderRadius: 11, border: `1.5px solid ${selected ? C.accent : C.line}`, background: selected ? C.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }),
-    bottomCTA: { position: 'fixed', bottom: 20, left: 20, right: 20, maxWidth: 440, margin: '0 auto', zIndex: 20 },
+    bottomCTA: { position: 'fixed', bottom: 0, left: 0, right: 0, background: C.bg, borderTop: `1px solid ${C.lineSoft}`, paddingTop: 14, paddingBottom: 'calc(14px + env(safe-area-inset-bottom))', paddingLeft: 20, paddingRight: 20, zIndex: 20 },
+    bottomCTAInner: { maxWidth: 440, margin: '0 auto' },
     ctaBtn: (disabled) => ({ width: '100%', background: disabled ? C.line : C.accent, color: disabled ? C.inkMuted : C.surface, border: 'none', padding: '16px', borderRadius: 14, fontSize: 15, fontWeight: 600, cursor: disabled ? 'default' : 'pointer', fontFamily: fontSans, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: disabled ? 'none' : `0 4px 16px ${C.accent}30` }),
     skipBtn: { width: '100%', background: 'transparent', color: C.inkSoft, border: 'none', padding: '12px', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: fontSans },
 
@@ -1922,20 +1923,19 @@ export default function FinanceApp() {
           })()}
         </div>
 
-        {/* Fade backdrop so scrolled content doesn't show under the CTA */}
-        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, height: 240, background: `linear-gradient(to top, ${C.bg} 78%, ${C.bg}00)`, pointerEvents: 'none', zIndex: 19 }} />
-
         <div style={s.bottomCTA}>
-          <button style={s.ctaBtn(!canAdvance())} onClick={handleNext} disabled={!canAdvance()}>
-            {onboardStep === 6 ? t.onboarding.summary.ctaContinue : t.onboarding.cta} <ArrowRight size={16} />
-          </button>
-          {onboardStep === 5 && (
-            <button style={s.skipBtn} onClick={finishOnboarding}>{t.onboarding.saveFor.skip}</button>
-          )}
-          <div style={{ textAlign: 'center', marginTop: 8 }}>
-            <button style={{ ...s.ghostBtn, fontSize: 12, color: C.inkMuted }} onClick={() => setLang(lang === 'en' ? 'pt' : 'en')}>
-              <Globe size={12} /> {lang === 'en' ? 'Português' : 'English'}
+          <div style={s.bottomCTAInner}>
+            <button style={s.ctaBtn(!canAdvance())} onClick={handleNext} disabled={!canAdvance()}>
+              {onboardStep === 6 ? t.onboarding.summary.ctaContinue : t.onboarding.cta} <ArrowRight size={16} />
             </button>
+            {onboardStep === 5 && (
+              <button style={s.skipBtn} onClick={finishOnboarding}>{t.onboarding.saveFor.skip}</button>
+            )}
+            <div style={{ textAlign: 'center', marginTop: 8 }}>
+              <button style={{ ...s.ghostBtn, fontSize: 12, color: C.inkMuted }} onClick={() => setLang(lang === 'en' ? 'pt' : 'en')}>
+                <Globe size={12} /> {lang === 'en' ? 'Português' : 'English'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
