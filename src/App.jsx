@@ -205,6 +205,10 @@ const copy = {
       monthsAgo: (n) => `${n}mo ago`,
       yearsAgo: (n) => `${n}y ago`,
       types: { stocks: 'Stocks', crypto: 'Crypto', bonds: 'Bonds', cash: 'Cash', reits: 'REITs', pension: 'Pension', other: 'Other' },
+      riskLabel: 'Portfolio risk',
+      riskScale: ['Safe', 'Defensive', 'Balanced', 'Aggressive', 'Speculative'],
+      account: 'Account',
+      accountOptional: 'optional (e.g. ISA, SIPP)',
     },
     forecast: {
       title: 'Forecast',
@@ -224,6 +228,9 @@ const copy = {
       filterBy: 'View',
       composition: 'Composition over time',
       diff: (amt, years) => <>Over {years}y, +{amt} vs. current plan.</>,
+      nominal: 'Nominal',
+      real: 'Real',
+      realHint: (rate) => `today's £, ${rate}%/yr inflation`,
     },
     profile: {
       title: 'Profile',
@@ -432,6 +439,10 @@ const copy = {
       monthsAgo: (n) => `há ${n}m`,
       yearsAgo: (n) => `há ${n}a`,
       types: { stocks: 'Ações', crypto: 'Cripto', bonds: 'Renda fixa', cash: 'Reserva', reits: 'FIIs', pension: 'Previdência', other: 'Outros' },
+      riskLabel: 'Risco da carteira',
+      riskScale: ['Seguro', 'Defensivo', 'Balanceado', 'Agressivo', 'Especulativo'],
+      account: 'Conta',
+      accountOptional: 'opcional (ex: Tesouro, CDB)',
     },
     forecast: {
       title: 'Previsão',
@@ -449,6 +460,9 @@ const copy = {
       dividendReinvested: 'Dividendos reinvestidos',
       composition: 'Composição ao longo do tempo',
       diff: (amt, years) => <>Em {years}a, +{amt} vs. plano atual.</>,
+      nominal: 'Nominal',
+      real: 'Real',
+      realHint: (rate) => `R$ de hoje, ${rate}%/ano de inflação`,
       filterAll: 'Todos',
       filterBy: 'Ver',
     },
@@ -685,6 +699,22 @@ function sharesByType(entries, valueKey) {
   return totals;
 }
 
+// Implicit risk score (1 = safest, 5 = riskiest) per bucket type.
+const TYPE_RISK = { cash: 1, bonds: 2, pension: 2, reits: 3, other: 3, stocks: 4, crypto: 5 };
+
+// Weighted-average risk from a shares-by-type map.
+function blendedRisk(sharesMap) {
+  let weighted = 0, total = 0;
+  Object.entries(sharesMap).forEach(([type, share]) => {
+    const r = TYPE_RISK[type];
+    if (r != null) { weighted += r * share; total += share; }
+  });
+  return total > 0 ? weighted / total : 0;
+}
+
+// Default annual inflation rate per country (used by the Forecast real/nominal toggle).
+const COUNTRY_INFLATION = { uk: 2.5, br: 4.5 };
+
 // Benchmark status for an item
 function getBenchmarkStatus(item, salary, country) {
   if (!item.benchmarkKey || !salary) return null;
@@ -904,6 +934,7 @@ export default function FinanceApp() {
   const [expandedYear, setExpandedYear] = useState(null);
   const [forecastYears, setForecastYears] = useState(10);
   const [forecastBucketId, setForecastBucketId] = useState('all');
+  const [realMode, setRealMode] = useState(false);
 
   // Hide floating bottom nav while the on-screen keyboard is open (iOS Safari pushes fixed elements up)
   const [keyboardOpen, setKeyboardOpen] = useState(false);
@@ -1041,10 +1072,26 @@ export default function FinanceApp() {
       ? buckets
       : buckets.filter(b => b.id === forecastBucketId);
     if (filteredBuckets.length === 0) return { months: [], years: [], filteredBuckets: [], baselineFinal: 0, scenarioFinal: 0 };
-    const months = projectWealthMonthly(filteredBuckets, forecastYears, scenarioExtra);
+    const inflRate = realMode ? (COUNTRY_INFLATION[country] || 2.5) : 0;
+    const deflate = (value, monthIdx) => inflRate > 0 ? value / Math.pow(1 + inflRate / 100, monthIdx / 12) : value;
+    const rawMonths = projectWealthMonthly(filteredBuckets, forecastYears, scenarioExtra);
+    const months = rawMonths.map(p => {
+      if (inflRate === 0) return p;
+      const f = Math.pow(1 + inflRate / 100, p.monthIndex / 12);
+      const byBucket = {};
+      Object.entries(p.byBucket).forEach(([k, v]) => { byBucket[k] = v / f; });
+      return {
+        ...p,
+        total: p.total / f,
+        cumulativeContributed: p.cumulativeContributed / f,
+        priceGrowthThisMonth: p.priceGrowthThisMonth / f,
+        dividendThisMonth: p.dividendThisMonth / f,
+        byBucket,
+      };
+    });
     const scenarioFinal = months[months.length - 1].total;
     const baselineFinal = scenarioExtra > 0
-      ? projectWealthMonthly(filteredBuckets, forecastYears, 0).at(-1).total
+      ? deflate(projectWealthMonthly(filteredBuckets, forecastYears, 0).at(-1).total, forecastYears * 12)
       : scenarioFinal;
     // Group by year
     const yearMap = {};
@@ -1068,7 +1115,7 @@ export default function FinanceApp() {
       y.interestThisYear = y.growth - y.contributedThisYear;
     });
     return { months, years, filteredBuckets, baselineFinal, scenarioFinal };
-  }, [buckets, forecastYears, forecastBucketId, scenarioExtra]);
+  }, [buckets, forecastYears, forecastBucketId, scenarioExtra, realMode, country]);
 
   // ==================== ONBOARDING HELPERS ====================
   const finishOnboarding = () => {
@@ -2023,9 +2070,34 @@ export default function FinanceApp() {
               const current = sharesByType(buckets.map(b => ({ type: b.type, value: Number(b.current) || 0 })), 'value');
               const types = Array.from(new Set([...Object.keys(target), ...Object.keys(current)]));
               if (types.length === 0) return null;
+              const currentRisk = blendedRisk(current);
+              const targetRisk = blendedRisk(target);
+              const riskPct = ((currentRisk - 1) / 4) * 100;
+              const targetRiskPct = ((targetRisk - 1) / 4) * 100;
+              const riskLabelIdx = Math.min(4, Math.max(0, Math.round(currentRisk) - 1));
               return (
                 <div style={s.card}>
                   <div style={{ ...s.cardLabel, marginBottom: 14 }}>{t.wealth.allocBalance}</div>
+
+                  {currentRisk > 0 && (
+                    <div style={{ marginBottom: 16, paddingBottom: 14, borderBottom: `1px solid ${C.lineSoft}` }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                        <span style={{ fontSize: 11, color: C.inkMuted, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{t.wealth.riskLabel}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{t.wealth.riskScale[riskLabelIdx]}</span>
+                      </div>
+                      <div style={{ position: 'relative', height: 8, borderRadius: 4, background: `linear-gradient(to right, ${C.accent}, ${C.yellow}, ${C.red || '#E06B53'})` }}>
+                        <div style={{ position: 'absolute', left: `calc(${Math.min(Math.max(riskPct, 0), 100)}% - 6px)`, top: -2, width: 12, height: 12, borderRadius: 6, background: C.surface, border: `2px solid ${C.ink}` }} />
+                        {targetRisk > 0 && (
+                          <div style={{ position: 'absolute', left: `${Math.min(Math.max(targetRiskPct, 0), 100)}%`, top: -3, width: 2, height: 14, background: C.ink, opacity: 0.5 }} />
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 9, color: C.inkMuted, fontWeight: 600 }}>
+                        <span>{t.wealth.riskScale[0]}</span>
+                        <span>{t.wealth.riskScale[4]}</span>
+                      </div>
+                    </div>
+                  )}
+
                   {types.map(type => {
                     const cur = Math.round((current[type] || 0) * 100);
                     const tgt = Math.round((target[type] || 0) * 100);
@@ -2074,7 +2146,12 @@ export default function FinanceApp() {
                         {b.name.charAt(0).toUpperCase()}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 15, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
+                        <div style={{ fontSize: 15, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</span>
+                          {b.account && (
+                            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 4, background: color + '20', color, flexShrink: 0 }}>{b.account}</span>
+                          )}
+                        </div>
                         <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 2 }}>{t.wealth.monthly} {fmt(b.monthly, t)} · {b.growth}%{Number(b.dividend) > 0 ? ` + ${b.dividend}% div` : ''}/yr</div>
                       </div>
                       <input type="number" inputMode="decimal" style={s.inputNum} value={b.current || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'current', e.target.value)} />
@@ -2099,6 +2176,10 @@ export default function FinanceApp() {
                         <div style={{ marginBottom: 8 }}>
                           <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.common.edit} {t.wealth.title}</div>
                           <input style={{ ...s.input, padding: '8px 12px', fontSize: 16 }} value={b.name} onChange={(e) => updateBucket(b.id, 'name', e.target.value)} />
+                        </div>
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.account} <span style={{ color: C.inkMuted, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {t.wealth.accountOptional}</span></div>
+                          <input style={{ ...s.input, padding: '8px 12px', fontSize: 16 }} value={b.account || ''} placeholder="" onChange={(e) => updateBucket(b.id, 'account', e.target.value)} />
                         </div>
                         <div style={{ marginBottom: 8 }}>
                           <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.monthly}</div>
@@ -2157,6 +2238,16 @@ export default function FinanceApp() {
                       {[5, 10, 20, 30].map(y => (
                         <button key={y} style={{ padding: '5px 12px', border: 'none', borderRadius: 999, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600, background: forecastYears === y ? C.accent : 'transparent', color: forecastYears === y ? C.surface : C.inkSoft }} onClick={() => { setForecastYears(y); setExpandedYear(null); }}>{y}{t.common.year}</button>
                       ))}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.lineSoft}` }}>
+                    <div>
+                      <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600 }}>{realMode ? t.forecast.real : t.forecast.nominal}</div>
+                      {realMode && <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 2 }}>{t.forecast.realHint(COUNTRY_INFLATION[country] || 2.5)}</div>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 3, background: C.surfaceAlt, padding: 3, borderRadius: 999 }}>
+                      <button style={{ padding: '5px 12px', border: 'none', borderRadius: 999, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600, background: !realMode ? C.accent : 'transparent', color: !realMode ? C.surface : C.inkSoft }} onClick={() => setRealMode(false)}>{t.forecast.nominal}</button>
+                      <button style={{ padding: '5px 12px', border: 'none', borderRadius: 999, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600, background: realMode ? C.accent : 'transparent', color: realMode ? C.surface : C.inkSoft }} onClick={() => setRealMode(true)}>{t.forecast.real}</button>
                     </div>
                   </div>
                 </div>
