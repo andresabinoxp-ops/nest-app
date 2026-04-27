@@ -1631,7 +1631,8 @@ export default function FinanceApp() {
     main: { maxWidth: 640, margin: '0 auto', padding: '20px 20px' },
 
     // Onboarding
-    onboardMain: { maxWidth: 480, margin: '0 auto', padding: 'calc(30px + env(safe-area-inset-top)) 24px 200px', display: 'flex', flexDirection: 'column' },
+    onboardMain: { maxWidth: 480, margin: '0 auto', padding: '0 24px 200px', display: 'flex', flexDirection: 'column' },
+    onboardStickyHeader: { position: 'sticky', top: 0, background: C.bg, paddingTop: 'calc(20px + env(safe-area-inset-top))', paddingBottom: 14, margin: '0 -24px', paddingLeft: 24, paddingRight: 24, zIndex: 5 },
     dots: { display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 36 },
     dot: (active) => ({ width: active ? 22 : 6, height: 6, borderRadius: 3, background: active ? C.accent : C.line, transition: 'all 0.3s' }),
     onboardEyebrow: { fontSize: 11, color: C.accent, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', textAlign: 'center', marginBottom: 12 },
@@ -1720,11 +1721,30 @@ export default function FinanceApp() {
       else finishOnboarding();
     };
 
+    const stickyHeader = (() => {
+      if (onboardStep === 1) return { title: t.onboarding.country.title, bold: t.onboarding.country.titleBold, sub: t.onboarding.country.sub };
+      if (onboardStep === 2) return { title: t.onboarding.income.title, bold: t.onboarding.income.titleBold, sub: t.onboarding.income.sub };
+      if (onboardStep === 3) return { title: t.onboarding.goal.title, bold: t.onboarding.goal.titleBold, sub: null };
+      if (onboardStep === 4) return { title: t.onboarding.profile.title, bold: t.onboarding.profile.titleBold, sub: t.onboarding.profile.sub, small: true };
+      if (onboardStep === 5) return { title: t.onboarding.saveFor.title, bold: t.onboarding.saveFor.titleBold, sub: t.onboarding.saveFor.sub };
+      return null;
+    })();
+
     return (
       <div style={s.app}>
         <div style={s.onboardMain}>
-          <div style={s.dots}>
-            {[0,1,2,3,4,5,6].map(i => <div key={i} style={s.dot(onboardStep === i)} />)}
+          <div style={s.onboardStickyHeader}>
+            <div style={{ ...s.dots, marginBottom: stickyHeader ? 14 : 28 }}>
+              {[0,1,2,3,4,5,6].map(i => <div key={i} style={s.dot(onboardStep === i)} />)}
+            </div>
+            {stickyHeader && (
+              <>
+                <h1 style={{ ...s.onboardTitle, fontSize: stickyHeader.small ? 26 : 32, marginBottom: stickyHeader.sub ? 6 : 0 }}>
+                  {stickyHeader.title} <span style={s.onboardTitleBold}>{stickyHeader.bold}</span>
+                </h1>
+                {stickyHeader.sub && <p style={{ ...s.onboardSub, marginBottom: 0 }}>{stickyHeader.sub}</p>}
+              </>
+            )}
           </div>
 
           {onboardStep === 0 && (
@@ -1772,11 +1792,6 @@ export default function FinanceApp() {
 
           {onboardStep === 1 && (
             <>
-              <h1 style={s.onboardTitle}>
-                {t.onboarding.country.title}{' '}
-                <span style={s.onboardTitleBold}>{t.onboarding.country.titleBold}</span>
-              </h1>
-              <p style={s.onboardSub}>{t.onboarding.country.sub}</p>
               {t.onboarding.country.options.map(opt => (
                 <div key={opt.v} style={s.optionCard(country === opt.v)} onClick={() => setCountry(opt.v)}>
                   <div style={{ ...s.optionIconBox(country === opt.v), background: country === opt.v ? C.accent : C.surfaceAlt, fontSize: 22, lineHeight: 1 }}>
@@ -1794,11 +1809,6 @@ export default function FinanceApp() {
 
           {onboardStep === 2 && (
             <>
-              <h1 style={s.onboardTitle}>
-                {t.onboarding.income.title}{' '}
-                <span style={s.onboardTitleBold}>{t.onboarding.income.titleBold}</span>
-              </h1>
-              <p style={s.onboardSub}>{t.onboarding.income.sub}</p>
               <div style={{ ...s.heroCard, marginTop: 8 }}>
                 <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.85, marginBottom: 12 }}>
                   {t.allocate.income}
@@ -1813,10 +1823,6 @@ export default function FinanceApp() {
 
           {onboardStep === 3 && (
             <>
-              <h1 style={s.onboardTitle}>
-                {t.onboarding.goal.title}{' '}
-                <span style={s.onboardTitleBold}>{t.onboarding.goal.titleBold}</span>
-              </h1>
               <div style={{ marginTop: 8 }}>
                 {t.onboarding.goal.options.map(opt => (
                   <div key={opt.v} style={s.optionCard(mainGoal === opt.v)} onClick={() => setMainGoal(opt.v)}>
@@ -1831,11 +1837,6 @@ export default function FinanceApp() {
 
           {onboardStep === 4 && (
             <>
-              <h1 style={{ ...s.onboardTitle, fontSize: 26, marginBottom: 6 }}>
-                {t.onboarding.profile.title}{' '}
-                <span style={s.onboardTitleBold}>{t.onboarding.profile.titleBold}</span>
-              </h1>
-              <p style={{ ...s.onboardSub, marginBottom: 16 }}>{t.onboarding.profile.sub}</p>
               {t.onboarding.profile.options.map(opt => {
                 const profileBuckets = (PROFILE_BUCKETS[opt.v] && PROFILE_BUCKETS[opt.v][country]) || [];
                 const totalShare = profileBuckets.reduce((sum, b) => sum + b.share, 0) || 1;
@@ -1874,11 +1875,6 @@ export default function FinanceApp() {
 
           {onboardStep === 5 && (
             <>
-              <h1 style={s.onboardTitle}>
-                {t.onboarding.saveFor.title}{' '}
-                <span style={s.onboardTitleBold}>{t.onboarding.saveFor.titleBold}</span>
-              </h1>
-              <p style={s.onboardSub}>{t.onboarding.saveFor.sub}</p>
               {t.onboarding.saveFor.options.map(opt => {
                 const sel = saveForPicks.includes(opt.v);
                 return (
