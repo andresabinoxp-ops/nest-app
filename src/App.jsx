@@ -136,6 +136,8 @@ const copy = {
       surplusKeep: 'Save as is',
       surplusSplit: 'Split across Wealth',
       sendTo: (name) => `Send to ${name}`,
+      templates: 'Or pick a template',
+      lastMonth: (amt) => `Last month: ${amt}`,
       planHint: 'Nest is a planner. Set how your money flows each month.',
       saved: 'Saved for',
       smartCard: {
@@ -406,6 +408,8 @@ const copy = {
       surplusKeep: 'Salvar mesmo assim',
       surplusSplit: 'Dividir no Patrimônio',
       sendTo: (name) => `Mandar pra ${name}`,
+      templates: 'Ou escolha um modelo',
+      lastMonth: (amt) => `Mês passado: ${amt}`,
       planHint: 'O Nest é um planejador. Defina como seu dinheiro flui a cada mês.',
       saved: 'Salvo em',
       smartCard: {
@@ -664,6 +668,23 @@ const PILLAR_BENCHMARKS = {
   wealth: ['savings', 'emergency', 'investments'],
   debt: ['debt'],
 };
+
+// Named templates: faster, less personalised alternative to Smart Split.
+// Each template's fractions are already normalised to sum to 1.
+const TEMPLATES_EN = [
+  { key: 'starter', name: 'Starter', sub: '50/30/20 baseline', fractions: { housing: 0.30, utilities: 0.07, groceries: 0.11, transport: 0.12, lifestyle: 0.15, emergency: 0.05, savings: 0.10, investments: 0.10, debt: 0 } },
+  { key: 'aggressive', name: 'Aggressive saver', sub: 'Front-load investing', fractions: { housing: 0.25, utilities: 0.06, groceries: 0.10, transport: 0.10, lifestyle: 0.10, emergency: 0.05, savings: 0.15, investments: 0.19, debt: 0 } },
+  { key: 'debt', name: 'Debt destroyer', sub: 'Pay debts down fast', fractions: { housing: 0.30, utilities: 0.07, groceries: 0.11, transport: 0.10, lifestyle: 0.10, emergency: 0.02, savings: 0.05, investments: 0.05, debt: 0.20 } },
+  { key: 'fire', name: 'FIRE chaser', sub: 'Aim for early retirement', fractions: { housing: 0.25, utilities: 0.06, groceries: 0.10, transport: 0.10, lifestyle: 0.10, emergency: 0.04, savings: 0.10, investments: 0.25, debt: 0 } },
+  { key: 'family', name: 'Family essentials', sub: 'Higher household needs', fractions: { housing: 0.30, utilities: 0.08, groceries: 0.16, transport: 0.12, lifestyle: 0.08, emergency: 0.05, savings: 0.10, investments: 0.10, debt: 0.01 } },
+];
+const TEMPLATES_PT = [
+  { key: 'starter', name: 'Iniciante', sub: 'Base 50/30/20', fractions: { housing: 0.28, utilities: 0.07, groceries: 0.15, transport: 0.14, lifestyle: 0.12, emergency: 0.05, savings: 0.09, investments: 0.10, debt: 0 } },
+  { key: 'aggressive', name: 'Investidor agressivo', sub: 'Foco em investir', fractions: { housing: 0.24, utilities: 0.06, groceries: 0.13, transport: 0.10, lifestyle: 0.10, emergency: 0.05, savings: 0.10, investments: 0.22, debt: 0 } },
+  { key: 'debt', name: 'Quitar dívidas', sub: 'Pagar dívidas rápido', fractions: { housing: 0.28, utilities: 0.07, groceries: 0.15, transport: 0.10, lifestyle: 0.10, emergency: 0.02, savings: 0.05, investments: 0.03, debt: 0.20 } },
+  { key: 'fire', name: 'Aposentadoria cedo', sub: 'Independência financeira', fractions: { housing: 0.24, utilities: 0.06, groceries: 0.13, transport: 0.10, lifestyle: 0.08, emergency: 0.04, savings: 0.10, investments: 0.25, debt: 0 } },
+  { key: 'family', name: 'Família', sub: 'Mais para a casa', fractions: { housing: 0.28, utilities: 0.08, groceries: 0.20, transport: 0.12, lifestyle: 0.08, emergency: 0.05, savings: 0.09, investments: 0.09, debt: 0.01 } },
+];
 
 // Suggestion chips used to seed an empty pillar.
 const STARTER_ITEMS = {
@@ -1776,6 +1797,15 @@ export default function FinanceApp() {
       debt: Math.round((totals.debt / sum) * 100),
     };
   };
+  const applyTemplate = (templateKey) => {
+    const list = lang === 'pt' ? TEMPLATES_PT : TEMPLATES_EN;
+    const tpl = list.find(t => t.key === templateKey);
+    if (!tpl || !salary) return;
+    const split = {};
+    Object.entries(tpl.fractions).forEach(([k, frac]) => { split[k] = Math.round(salary * frac); });
+    applySmartSplit(split);
+  };
+
   const applySmartSplit = (split) => {
     // Map split keys to item names, icons, pillars, and benchmark keys
     const nameMap = lang === 'en'
@@ -2064,6 +2094,20 @@ export default function FinanceApp() {
                   )}
                 </div>
                 <div style={{ fontSize: 11, color: C.inkMuted, lineHeight: 1.5, marginTop: 10 }}>{t.allocate.planHint}</div>
+
+                {salary > 0 && (
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.lineSoft}` }}>
+                    <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.allocate.templates}</div>
+                    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4 }}>
+                      {(lang === 'pt' ? TEMPLATES_PT : TEMPLATES_EN).map(tpl => (
+                        <button key={tpl.key} onClick={() => applyTemplate(tpl.key)} style={{ flexShrink: 0, minWidth: 130, textAlign: 'left', padding: '10px 12px', borderRadius: 12, border: `1px solid ${C.line}`, background: C.surfaceAlt, cursor: 'pointer', fontFamily: fontSans }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{tpl.name}</div>
+                          <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 2 }}>{tpl.sub}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2213,6 +2257,12 @@ export default function FinanceApp() {
                     const isEditingItem = editingItemId === item.id;
                     const bm = getBenchmarkStatus(item, salary, country);
                     const pct = salary > 0 ? (item.amount / salary) * 100 : 0;
+                    const lastSnap = snapshots[snapshots.length - 1];
+                    const lastItem = lastSnap?.items?.find(li =>
+                      (item.benchmarkKey && li.benchmarkKey === item.benchmarkKey && li.pillar === item.pillar) ||
+                      (li.name === item.name && li.pillar === item.pillar)
+                    );
+                    const lastAmount = lastItem ? Number(lastItem.amount) || 0 : 0;
                     const bmThreshold = bm?.threshold || 0;
                     const barColor = bm?.status === 'green' ? C.accent : bm?.status === 'yellow' ? C.yellow : C.red;
                     // Scale the bar so the threshold sits ~70% across, giving
@@ -2255,6 +2305,13 @@ export default function FinanceApp() {
                             <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 4 }}>
                               <span style={{ fontWeight: 600 }}>{pct.toFixed(pct < 1 ? 1 : 0)}%</span> {t.allocate.ofIncome}
                             </div>
+                          </div>
+                        )}
+
+                        {/* Last-month reference */}
+                        {lastAmount > 0 && (
+                          <div style={{ marginTop: 4, paddingLeft: 36, fontSize: 10, color: C.inkMuted, fontStyle: 'italic' }}>
+                            {t.allocate.lastMonth(fmt(lastAmount, t))}
                           </div>
                         )}
 
@@ -2310,14 +2367,25 @@ export default function FinanceApp() {
               );
             })}
 
-            {/* Re-trigger: Smart Split is always one tap away */}
+            {/* Re-trigger: Smart Split + templates always one tap away */}
             {smartStep === null && allocated > 0 && (
-              <button
-                onClick={() => { setSmartStep('q1'); setSmartAnswers({}); setSmartResult(null); }}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', background: 'transparent', border: `1px dashed ${C.line}`, borderRadius: 12, padding: '12px 16px', cursor: 'pointer', fontFamily: fontSans, fontSize: 12, fontWeight: 600, color: C.accent, marginBottom: 12 }}
-              >
-                <Sparkles size={13} /> {t.allocate.smartCard.cta}
-              </button>
+              <div style={{ marginBottom: 12 }}>
+                <button
+                  onClick={() => { setSmartStep('q1'); setSmartAnswers({}); setSmartResult(null); }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', background: 'transparent', border: `1px dashed ${C.line}`, borderRadius: 12, padding: '12px 16px', cursor: 'pointer', fontFamily: fontSans, fontSize: 12, fontWeight: 600, color: C.accent, marginBottom: 8 }}
+                >
+                  <Sparkles size={13} /> {t.allocate.smartCard.cta}
+                </button>
+                {salary > 0 && (
+                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    {(lang === 'pt' ? TEMPLATES_PT : TEMPLATES_EN).map(tpl => (
+                      <button key={tpl.key} onClick={() => applyTemplate(tpl.key)} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 999, border: `1px solid ${C.line}`, background: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600, color: C.inkSoft }}>
+                        {tpl.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Summary + save */}
