@@ -611,6 +611,44 @@ const ICONS = {
 
 // Helpers
 const fmt = (n, t) => new Intl.NumberFormat(t.locale, { style: 'currency', currency: t.currency, maximumFractionDigits: 0 }).format(n || 0);
+const fmtNumber = (n, t) => new Intl.NumberFormat(t.locale, { maximumFractionDigits: 0 }).format(n || 0);
+// Parse locale-formatted number string back to a number. Strips spaces and the
+// locale's thousands separator; treats the locale's decimal separator as '.'.
+function parseLocaleNumber(str, locale) {
+  if (str == null) return 0;
+  const trimmed = String(str).trim();
+  if (trimmed === '') return 0;
+  const sample = (1234.5).toLocaleString(locale);
+  const decimalSep = sample.charAt(sample.length - 2);
+  const thousandsSep = decimalSep === ',' ? '.' : ',';
+  const cleaned = trimmed.split(thousandsSep).join('').replace(decimalSep, '.');
+  const n = Number(cleaned.replace(/[^\d.\-]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+// Money input: displays formatted (with thousands separator) when not focused,
+// raw editable digits when focused. iOS shows the numeric keyboard via inputMode.
+function MoneyInput({ value, onChange, t, style, placeholder = '0' }) {
+  const [focused, setFocused] = React.useState(false);
+  const [raw, setRaw] = React.useState('');
+  const num = Number(value) || 0;
+  const display = focused ? raw : (num > 0 ? fmtNumber(num, t) : '');
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={display}
+      placeholder={placeholder}
+      onFocus={() => { setRaw(num > 0 ? String(num) : ''); setFocused(true); }}
+      onBlur={() => setFocused(false)}
+      onChange={(e) => {
+        const v = e.target.value;
+        setRaw(v);
+        onChange(parseLocaleNumber(v, t.locale));
+      }}
+      style={style}
+    />
+  );
+}
 const fmtShort = (n, t) => {
   if (!n || isNaN(n)) return fmt(0, t);
   if (Math.abs(n) >= 1e6) return `${t.currencySymbol}${(n / 1e6).toFixed(1)}M`;
@@ -2225,7 +2263,7 @@ export default function FinanceApp() {
                           <span>{t.wealth.monthly} {fmt(b.monthly, t)} · {b.growth}%{Number(b.dividend) > 0 ? ` + ${b.dividend}% div` : ''}/yr{Number(b.risk) >= 1 && Number(b.risk) <= 5 ? ` · ${t.wealth.riskScale[Number(b.risk) - 1]}` : ''}</span>
                         </div>
                       </div>
-                      <input type="number" inputMode="decimal" style={{ ...s.inputNum, width: 92 }} value={b.current || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'current', e.target.value)} />
+                      <MoneyInput value={b.current} t={t} style={{ ...s.inputNum, width: 96 }} onChange={(v) => updateBucket(b.id, 'current', v)} />
                       <button onClick={() => { setTxBucketId(isTx ? null : b.id); setTxMode('deposit'); setTxAmount(''); }} style={{ background: isTx ? color + '20' : 'transparent', border: 'none', cursor: 'pointer', color: isTx ? color : C.inkMuted, padding: 6, borderRadius: 8, display: 'flex', alignItems: 'center' }} aria-label={t.wealth.move}>
                         <ArrowDownUp size={14} />
                       </button>
@@ -2247,7 +2285,7 @@ export default function FinanceApp() {
 
                     {/* Deposit / Withdraw quick panel */}
                     {isTx && (
-                      <div style={{ marginTop: 12, padding: 12, background: C.surfaceAlt, borderRadius: 12, marginLeft: 48 }}>
+                      <div style={{ marginTop: 12, padding: 12, background: C.surfaceAlt, borderRadius: 12 }}>
                         <div style={{ display: 'flex', gap: 3, background: C.surface, padding: 3, borderRadius: 999, marginBottom: 10 }}>
                           {['deposit', 'withdraw'].map(m => (
                             <button key={m} onClick={() => setTxMode(m)} style={{ flex: 1, padding: '6px 10px', border: 'none', borderRadius: 999, cursor: 'pointer', fontFamily: fontSans, fontSize: 12, fontWeight: 600, background: txMode === m ? (m === 'deposit' ? C.accent : C.red) : 'transparent', color: txMode === m ? C.surface : C.inkSoft }}>
@@ -2256,8 +2294,8 @@ export default function FinanceApp() {
                           ))}
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          <input type="number" inputMode="decimal" autoFocus style={{ ...s.inputNum, flex: 1, width: 'auto', textAlign: 'left' }} value={txAmount} placeholder={t.wealth.moveAmount} onChange={(e) => setTxAmount(e.target.value)} />
-                          <button onClick={() => applyTx(b.id)} disabled={!Number(txAmount)} style={{ background: !Number(txAmount) ? C.line : (txMode === 'deposit' ? C.accent : C.red), color: C.surface, border: 'none', padding: '0 16px', borderRadius: 10, fontFamily: fontSans, fontSize: 13, fontWeight: 600, cursor: !Number(txAmount) ? 'default' : 'pointer' }}>
+                          <MoneyInput value={txAmount} t={t} style={{ ...s.inputNum, flex: 1, width: 'auto', minWidth: 0, textAlign: 'left' }} placeholder={t.wealth.moveAmount} onChange={(v) => setTxAmount(v)} />
+                          <button onClick={() => applyTx(b.id)} disabled={!Number(txAmount)} style={{ flexShrink: 0, background: !Number(txAmount) ? C.line : (txMode === 'deposit' ? C.accent : C.red), color: C.surface, border: 'none', padding: '0 16px', borderRadius: 10, fontFamily: fontSans, fontSize: 13, fontWeight: 600, cursor: !Number(txAmount) ? 'default' : 'pointer' }}>
                             {t.wealth.apply}
                           </button>
                         </div>
@@ -2286,7 +2324,7 @@ export default function FinanceApp() {
                         </div>
                         <div style={{ marginBottom: 8 }}>
                           <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.monthly}</div>
-                          <input type="number" inputMode="decimal" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={b.monthly || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'monthly', e.target.value)} />
+                          <MoneyInput value={b.monthly} t={t} style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} onChange={(v) => updateBucket(b.id, 'monthly', v)} />
                         </div>
                         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                           <div style={{ flex: 1 }}>
