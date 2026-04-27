@@ -222,6 +222,7 @@ const copy = {
       recentActivity: 'Recent activity',
       history: 'History',
       noHistory: 'No transactions yet. Use the move button to log a deposit or withdrawal.',
+      removeEntryQ: 'Remove this entry?',
     },
     forecast: {
       title: 'Forecast',
@@ -469,6 +470,7 @@ const copy = {
       recentActivity: 'Atividade recente',
       history: 'Histórico',
       noHistory: 'Sem transações ainda. Use o botão mover para registrar um depósito ou retirada.',
+      removeEntryQ: 'Remover este registro?',
     },
     forecast: {
       title: 'Previsão',
@@ -1012,6 +1014,7 @@ export default function FinanceApp() {
   const [txBucketId, setTxBucketId] = useState(null);
   const [txMode, setTxMode] = useState('deposit');
   const [txAmount, setTxAmount] = useState('');
+  const [confirmRemove, setConfirmRemove] = useState(null); // { bucketId, idx }
   const [editingGoalId, setEditingGoalId] = useState(null);
   const [scenarioExtra, setScenarioExtra] = useState(0);
 
@@ -1674,6 +1677,19 @@ export default function FinanceApp() {
     }));
     setTxBucketId(null);
     setTxAmount('');
+  };
+
+  const removeHistoryEntry = (bucketId, idx) => {
+    setBuckets(buckets.map(b => {
+      if (b.id !== bucketId) return b;
+      const history = b.history || [];
+      if (idx < 0 || idx >= history.length) return b;
+      const entry = history[idx];
+      const newCurrent = Math.max(0, (Number(b.current) || 0) - entry.delta);
+      const newHistory = history.filter((_, i) => i !== idx);
+      return { ...b, current: newCurrent, history: newHistory, lastUpdated: Date.now() };
+    }));
+    setConfirmRemove(null);
   };
   const addBucketOfType = (type) => {
     const defaults = {
@@ -2416,17 +2432,35 @@ export default function FinanceApp() {
                             <div style={{ fontSize: 11, color: C.inkMuted, lineHeight: 1.4, fontStyle: 'italic' }}>{t.wealth.noHistory}</div>
                           ) : (
                             <div>
-                              {[...b.history].reverse().slice(0, 10).map((h, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: i < Math.min(b.history.length, 10) - 1 ? `1px solid ${C.lineSoft}` : 'none' }}>
-                                  <div style={{ fontSize: 11, color: C.inkSoft }}>{fmtShortDate(h.ts, t)}</div>
-                                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                                    <span style={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: h.delta >= 0 ? C.accent : C.red }}>
-                                      {h.delta >= 0 ? '+' : '-'}{fmt(Math.abs(h.delta), t)}
-                                    </span>
-                                    <span style={{ fontSize: 11, color: C.inkMuted, fontVariantNumeric: 'tabular-nums' }}>→ {fmt(h.balanceAfter, t)}</span>
+                              {b.history.slice(-10).reverse().map((h, displayIdx) => {
+                                const originalIdx = b.history.length - 1 - displayIdx;
+                                const isConfirming = confirmRemove && confirmRemove.bucketId === b.id && confirmRemove.idx === originalIdx;
+                                const isLast = displayIdx === Math.min(b.history.length, 10) - 1;
+                                return (
+                                  <div key={originalIdx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 0', borderBottom: isLast ? 'none' : `1px solid ${C.lineSoft}` }}>
+                                    {isConfirming ? (
+                                      <>
+                                        <div style={{ fontSize: 11, color: C.inkSoft, flex: 1 }}>{t.wealth.removeEntryQ}</div>
+                                        <button onClick={() => setConfirmRemove(null)} style={{ background: 'transparent', border: `1px solid ${C.lineSoft}`, color: C.inkSoft, padding: '4px 10px', borderRadius: 8, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600 }}>{t.common.cancel}</button>
+                                        <button onClick={() => removeHistoryEntry(b.id, originalIdx)} style={{ background: C.red, border: 'none', color: C.surface, padding: '4px 10px', borderRadius: 8, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600 }}>{t.common.delete}</button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <div style={{ fontSize: 11, color: C.inkSoft, flexShrink: 0 }}>{fmtShortDate(h.ts, t)}</div>
+                                        <div style={{ flex: 1, display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 8 }}>
+                                          <span style={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: h.delta >= 0 ? C.accent : C.red }}>
+                                            {h.delta >= 0 ? '+' : '-'}{fmt(Math.abs(h.delta), t)}
+                                          </span>
+                                          <span style={{ fontSize: 11, color: C.inkMuted, fontVariantNumeric: 'tabular-nums' }}>→ {fmt(h.balanceAfter, t)}</span>
+                                        </div>
+                                        <button onClick={() => setConfirmRemove({ bucketId: b.id, idx: originalIdx })} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.inkMuted, padding: 2, display: 'flex', alignItems: 'center' }} aria-label={t.common.delete}>
+                                          <X size={13} />
+                                        </button>
+                                      </>
+                                    )}
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           )}
                         </div>
