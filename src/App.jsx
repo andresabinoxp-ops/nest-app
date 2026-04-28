@@ -195,6 +195,41 @@ const copy = {
       totalIncome: 'Total income',
       planHint: 'Nest is a planner. Set how your money flows each month.',
       saved: 'Saved for',
+      review: {
+        eyebrow: 'Month review',
+        title: (m) => `${m} · saved`,
+        headline: 'Here\'s what changed.',
+        empty: 'Plan saved. Come back next month for your first review.',
+        deltasTitle: 'Vs last month',
+        saveUp: (amt) => `Save +${amt}`,
+        saveDown: (amt) => `Save −${amt}`,
+        spendUp: (amt) => `Spend +${amt}`,
+        spendDown: (amt) => `Spend −${amt}`,
+        spendFlat: 'Spend unchanged',
+        saveFlat: 'Save unchanged',
+        goalsTitle: 'Goals you moved',
+        goalAdded: (amt) => `+${amt} this month`,
+        goalRemoved: (amt) => `−${amt} this month`,
+        goalAhead: (n) => `${n}mo ahead of target`,
+        goalBehind: (n) => `${n}mo behind target`,
+        goalOnTrack: 'on track',
+        driftTitle: 'Your plan is shifting',
+        driftDown: (pillar, pp) => `${pillar} dropped ${pp}pp vs your 3-month average.`,
+        driftUp: (pillar, pp) => `${pillar} rose ${pp}pp vs your 3-month average.`,
+        benchmarkTitle: 'Vs typical',
+        benchmarkAbove: (pillar, current, target) => `${pillar} is ${current}% — typical is around ${target}%.`,
+        benchmarkBelow: (pillar, current, target) => `${pillar} is ${current}% — typical is around ${target}%.`,
+        cta: 'Looks good',
+        adjust: 'Adjust plan',
+      },
+      pillarLabels: { save: 'Save', bills: 'Bills', spend: 'Spend', debt: 'Debt' },
+      benchmarkCard: {
+        title: 'How you compare',
+        sub: 'Typical share of income for your country.',
+        on: 'on track',
+        above: 'above typical',
+        below: 'below typical',
+      },
       smartCard: {
         title: 'Not sure how to split?',
         sub: '3 quick questions. Two suggested plans.',
@@ -257,6 +292,7 @@ const copy = {
       monthsLeft: (n) => n === 0 ? 'Reaching this month' : n === 1 ? '1 month left' : `${n} months left`,
       reachedBy: (label) => `Reached by ${label}`,
       noEta: 'Set a monthly amount to see when you\'ll reach it',
+      thisMonth: 'this month',
       complete: 'Complete!',
       quickAdd: 'Add to goal',
       deposit: 'Deposit',
@@ -593,6 +629,41 @@ const copy = {
       totalIncome: 'Renda total',
       planHint: 'O Nest é um planejador. Defina como seu dinheiro flui a cada mês.',
       saved: 'Salvo em',
+      review: {
+        eyebrow: 'Resumo do mês',
+        title: (m) => `${m} · salvo`,
+        headline: 'O que mudou.',
+        empty: 'Plano salvo. Volte mês que vem para o seu primeiro resumo.',
+        deltasTitle: 'Vs mês passado',
+        saveUp: (amt) => `Guardar +${amt}`,
+        saveDown: (amt) => `Guardar −${amt}`,
+        spendUp: (amt) => `Gastar +${amt}`,
+        spendDown: (amt) => `Gastar −${amt}`,
+        spendFlat: 'Gasto sem mudança',
+        saveFlat: 'Guardar sem mudança',
+        goalsTitle: 'Metas que avançaram',
+        goalAdded: (amt) => `+${amt} este mês`,
+        goalRemoved: (amt) => `−${amt} este mês`,
+        goalAhead: (n) => `${n} meses adiantado`,
+        goalBehind: (n) => `${n} meses atrasado`,
+        goalOnTrack: 'no ritmo',
+        driftTitle: 'Seu plano está mudando',
+        driftDown: (pillar, pp) => `${pillar} caiu ${pp}pp vs sua média de 3 meses.`,
+        driftUp: (pillar, pp) => `${pillar} subiu ${pp}pp vs sua média de 3 meses.`,
+        benchmarkTitle: 'Vs o típico',
+        benchmarkAbove: (pillar, current, target) => `${pillar} está em ${current}% — o típico fica em torno de ${target}%.`,
+        benchmarkBelow: (pillar, current, target) => `${pillar} está em ${current}% — o típico fica em torno de ${target}%.`,
+        cta: 'Tudo certo',
+        adjust: 'Ajustar plano',
+      },
+      pillarLabels: { save: 'Guardar', bills: 'Contas', spend: 'Gastar', debt: 'Dívida' },
+      benchmarkCard: {
+        title: 'Como você se compara',
+        sub: 'Faixa típica da renda no seu país.',
+        on: 'no padrão',
+        above: 'acima do típico',
+        below: 'abaixo do típico',
+      },
       smartCard: {
         title: 'Não sabe como dividir?',
         sub: '3 perguntas rápidas. Dois planos sugeridos.',
@@ -654,6 +725,7 @@ const copy = {
       monthsLeft: (n) => n === 0 ? 'Conquistando este mês' : n === 1 ? '1 mês restante' : `${n} meses restantes`,
       reachedBy: (label) => `Conquista em ${label}`,
       noEta: 'Defina um valor mensal pra ver quando vai conquistar',
+      thisMonth: 'este mês',
       complete: 'Conquistado!',
       quickAdd: 'Adicionar à meta',
       deposit: 'Depositar',
@@ -1493,6 +1565,7 @@ export default function FinanceApp() {
   const [pendingApply, setPendingApply] = useState(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [saveToast, setSaveToast] = useState(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   // UI state — don't persist editing flags etc.
   const [editingItemId, setEditingItemId] = useState(null);
@@ -1660,6 +1733,74 @@ export default function FinanceApp() {
     const monthIdx = parseInt(lastSnapshot.monthKey.split('-')[1]) - 1;
     return { saveDelta, spendDelta, monthName: t.month.names[monthIdx] };
   }, [lastSnapshot, pillarTotals, t]);
+
+  // Country-specific allocation benchmarks (typical share of income).
+  // UK: tilted toward Bills (housing-heavy). BR: tilted toward Bills + Save.
+  // Used by the Month Review and Allocate benchmark callout.
+  const allocationBenchmark = useMemo(() => {
+    if (country === 'br') return { bills: 0.50, save: 0.20, spend: 0.25, debt: 0.05 };
+    return { bills: 0.50, save: 0.20, spend: 0.25, debt: 0.05 };
+  }, [country]);
+
+  // Goal updates between this month and the most recent prior snapshot.
+  // Joins by goal id so renamed/deleted goals don't ghost-appear.
+  const goalDeltas = useMemo(() => {
+    if (!lastSnapshot) return [];
+    return goals.map(g => {
+      const prev = lastSnapshot.goals?.find(pg => pg.id === g.id);
+      if (!prev) return null;
+      const delta = (Number(g.current) || 0) - (Number(prev.current) || 0);
+      if (delta === 0) return null;
+      const pct = g.target > 0 ? Math.round((g.current / g.target) * 100) : 0;
+      const remaining = Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0));
+      const months = (Number(g.monthly) || 0) > 0 ? Math.ceil(remaining / Number(g.monthly)) : null;
+      let paceDiff = null;
+      if (g.deadline && months != null) {
+        const dl = new Date(g.deadline + '-01');
+        const now = new Date();
+        const monthsToDeadline = (dl.getFullYear() - now.getFullYear()) * 12 + (dl.getMonth() - now.getMonth());
+        if (monthsToDeadline > 0) paceDiff = monthsToDeadline - months;
+      }
+      return { id: g.id, name: g.name, icon: g.icon, type: g.type, delta, pct, months, paceDiff };
+    }).filter(Boolean);
+  }, [goals, lastSnapshot]);
+
+  // Pillar drift: average of last 3 snapshots' pillar % vs current.
+  // Flags shifts >= 5pp. Surfaces in Home insights and Month Review.
+  const pillarDrift = useMemo(() => {
+    if (snapshots.length < 2 || allocated <= 0) return [];
+    const recent = snapshots.slice(-3);
+    const pillarKeys = ['save', 'bills', 'spend', 'debt'];
+    const norm = (p) => p === 'wealth' ? 'save' : p === 'wants' ? 'spend' : p === 'needs' ? 'bills' : p;
+    const avgs = pillarKeys.map(key => {
+      const totals = recent.map(snap => {
+        const sum = snap.items.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+        const pillarSum = snap.items.filter(i => norm(i.pillar) === key).reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+        return sum > 0 ? pillarSum / sum : 0;
+      });
+      const avg = totals.reduce((a, b) => a + b, 0) / totals.length;
+      return { key, avg };
+    });
+    const out = [];
+    avgs.forEach(({ key, avg }) => {
+      const current = (pillarTotals[key] || 0) / allocated;
+      const diffPp = Math.round((current - avg) * 100);
+      if (Math.abs(diffPp) >= 5) out.push({ pillar: key, diffPp, currentPct: Math.round(current * 100), avgPct: Math.round(avg * 100) });
+    });
+    return out;
+  }, [snapshots, pillarTotals, allocated]);
+
+  // Pillar vs country benchmark — flags any pillar more than 5pp off norm.
+  const pillarBenchmarkGaps = useMemo(() => {
+    if (allocated <= 0) return [];
+    const out = [];
+    Object.entries(allocationBenchmark).forEach(([key, target]) => {
+      const current = (pillarTotals[key] || 0) / allocated;
+      const diffPp = Math.round((current - target) * 100);
+      if (Math.abs(diffPp) >= 5) out.push({ pillar: key, diffPp, currentPct: Math.round(current * 100), targetPct: Math.round(target * 100) });
+    });
+    return out;
+  }, [allocationBenchmark, pillarTotals, allocated]);
 
   const daysSinceCheckIn = useMemo(() => {
     if (!lastCheckIn) return null;
@@ -1852,11 +1993,8 @@ export default function FinanceApp() {
     }
     setLastCheckIn(now.toISOString());
 
-    // Show a confirmation toast with the pillar split
-    const pct = (n) => allocated > 0 ? Math.round((n / allocated) * 100) : 0;
-    const summary = `${pct(pillarTotals.needs)}/${pct(pillarTotals.wants)}/${pct(pillarTotals.wealth)}/${pct(pillarTotals.debt)}`;
-    setSaveToast(summary);
-    setTimeout(() => setSaveToast(null), 3500);
+    // Open the Month Review sheet with deltas, goal pace, drift, and benchmark callouts.
+    setReviewOpen(true);
 
     // Smart Allocate→Wealth feed: map wealth items to matching buckets by type
     // Emergency fund → cash buckets · Savings → cash/bonds · Investments → stocks/reits/crypto
@@ -3175,6 +3313,35 @@ export default function FinanceApp() {
               </div>
             )}
 
+            {/* How you compare — pillar % vs country benchmark */}
+            {allocated > 0 && (
+              <div style={{ ...s.card, marginBottom: 12 }}>
+                <div style={{ ...s.cardLabel, marginBottom: 4 }}>{t.allocate.benchmarkCard.title}</div>
+                <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 12 }}>{t.allocate.benchmarkCard.sub}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {['save', 'bills', 'spend', 'debt'].map(key => {
+                    const target = allocationBenchmark[key];
+                    const current = (pillarTotals[key] || 0) / allocated;
+                    const diffPp = Math.round((current - target) * 100);
+                    const onTrack = Math.abs(diffPp) < 5;
+                    const status = onTrack ? t.allocate.benchmarkCard.on : diffPp > 0 ? t.allocate.benchmarkCard.above : t.allocate.benchmarkCard.below;
+                    const statusColor = onTrack ? C.accent : diffPp > 0 ? (key === 'save' ? C.accent : C.inkSoft) : (key === 'save' ? C.inkSoft : C.inkSoft);
+                    return (
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ flexShrink: 0, width: 56, fontSize: 12, fontWeight: 600, color: C.ink }}>{t.allocate.pillarLabels[key]}</div>
+                        <div style={{ flex: 1, position: 'relative', height: 8, background: C.line, borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(100, Math.round(current * 100))}%`, background: onTrack ? C.accent : C.inkMuted, transition: 'width 0.3s' }} />
+                          <div style={{ position: 'absolute', left: `${Math.round(target * 100)}%`, top: -2, bottom: -2, width: 2, background: C.ink, opacity: 0.4 }} />
+                        </div>
+                        <div style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: statusColor, minWidth: 56, textAlign: 'right', ...s.num }}>{Math.round(current * 100)}%</div>
+                        <div style={{ flexShrink: 0, fontSize: 10, color: C.inkMuted, minWidth: 64, textAlign: 'right' }}>{status}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Summary + save */}
             <div style={s.card}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
@@ -3336,6 +3503,8 @@ export default function FinanceApp() {
               const isComplete = pct >= 100;
               const remaining = Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0));
               const months = (Number(g.monthly) || 0) > 0 ? Math.ceil(remaining / Number(g.monthly)) : null;
+              const prevSnap = lastSnapshot?.goals?.find(pg => pg.id === g.id);
+              const monthDelta = prevSnap ? (Number(g.current) || 0) - (Number(prevSnap.current) || 0) : 0;
               const targetDate = months != null && months > 0 ? (() => {
                 const d = new Date();
                 d.setMonth(d.getMonth() + months);
@@ -3391,6 +3560,15 @@ export default function FinanceApp() {
                         <span style={{ fontWeight: 600, color: C.ink }}>{pct}%</span>
                         <span>{fmt(g.target, t)}</span>
                       </div>
+
+                      {monthDelta !== 0 && (() => {
+                        const positive = isDebt ? monthDelta < 0 : monthDelta > 0;
+                        return (
+                          <div style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 999, background: positive ? `${C.accent}15` : C.surfaceAlt, color: positive ? C.accent : C.inkSoft, fontSize: 11, fontWeight: 700 }}>
+                            {monthDelta > 0 ? `+${fmt(monthDelta, t)}` : `−${fmt(Math.abs(monthDelta), t)}`} {t.goals.thisMonth}
+                          </div>
+                        );
+                      })()}
 
                       {/* Time-to-target */}
                       {isComplete ? (
@@ -4239,6 +4417,142 @@ export default function FinanceApp() {
           <span style={{ fontSize: 12, opacity: 0.7, fontVariantNumeric: 'tabular-nums', marginLeft: 'auto' }}>{saveToast}</span>
         </div>
       )}
+
+      {reviewOpen && (() => {
+        // The most recent prior snapshot (excluding this month) is the comparison baseline.
+        // On first-ever check-in, every section below gracefully empties out and we show
+        // the empty state instead of the cards.
+        const r = t.allocate.review;
+        const labels = t.allocate.pillarLabels;
+        const monthIdx = new Date().getMonth();
+        const monthLabel = t.month.names[monthIdx];
+
+        const saveDelta = monthlyDelta?.saveDelta ?? 0;
+        const spendDelta = monthlyDelta?.spendDelta ?? 0;
+        const hasDeltas = monthlyDelta && (Math.abs(saveDelta) > 0 || Math.abs(spendDelta) > 0);
+        const hasGoalDeltas = goalDeltas.length > 0;
+        const hasDrift = pillarDrift.length > 0;
+        const hasBenchmark = pillarBenchmarkGaps.length > 0;
+        const hasAnything = hasDeltas || hasGoalDeltas || hasDrift || hasBenchmark;
+
+        return (
+          <div onClick={() => setReviewOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: '88vh', background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div style={{ width: 36, height: 4, background: C.line, borderRadius: 2, margin: '0 auto 14px' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 16, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Check size={16} color={C.surface} strokeWidth={3} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>{r.eyebrow}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: C.ink }}>{r.title(monthLabel)}</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 4, marginBottom: 18, lineHeight: 1.5 }}>
+                {hasAnything ? r.headline : r.empty}
+              </div>
+
+              {hasDeltas && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 10, color: C.inkMuted, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>{r.deltasTitle}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {Math.abs(saveDelta) > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: saveDelta > 0 ? `${C.accent}10` : C.surfaceAlt, border: `1px solid ${saveDelta > 0 ? `${C.accent}40` : C.lineSoft}`, borderRadius: 12 }}>
+                        <PiggyBank size={16} color={saveDelta > 0 ? C.accent : C.inkSoft} />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: C.ink, flex: 1 }}>
+                          {saveDelta > 0 ? r.saveUp(fmt(saveDelta, t)) : r.saveDown(fmt(Math.abs(saveDelta), t))}
+                        </span>
+                      </div>
+                    )}
+                    {Math.abs(spendDelta) > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: spendDelta < 0 ? `${C.accent}10` : C.surfaceAlt, border: `1px solid ${spendDelta < 0 ? `${C.accent}40` : C.lineSoft}`, borderRadius: 12 }}>
+                        <ShoppingBag size={16} color={spendDelta < 0 ? C.accent : C.inkSoft} />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: C.ink, flex: 1 }}>
+                          {spendDelta > 0 ? r.spendUp(fmt(spendDelta, t)) : r.spendDown(fmt(Math.abs(spendDelta), t))}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {hasGoalDeltas && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 10, color: C.inkMuted, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>{r.goalsTitle}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {goalDeltas.map(g => {
+                      const positive = g.type === 'debt' ? g.delta < 0 : g.delta > 0;
+                      const accent = positive ? C.accent : C.inkSoft;
+                      let paceText = null;
+                      if (g.paceDiff != null) {
+                        if (g.paceDiff >= 1) paceText = r.goalAhead(g.paceDiff);
+                        else if (g.paceDiff <= -1) paceText = r.goalBehind(-g.paceDiff);
+                        else paceText = r.goalOnTrack;
+                      }
+                      return (
+                        <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: C.surfaceAlt, borderRadius: 12 }}>
+                          <div style={{ width: 28, height: 28, borderRadius: 8, background: positive ? `${C.accent}15` : C.line, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {renderIcon(g.icon, 14, accent, 2)}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
+                            <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2 }}>
+                              {g.delta > 0 ? r.goalAdded(fmt(g.delta, t)) : r.goalRemoved(fmt(Math.abs(g.delta), t))}
+                              {paceText && <> · <span style={{ color: g.paceDiff < 0 ? C.red : C.accent, fontWeight: 700 }}>{paceText}</span></>}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: C.ink, ...s.num }}>{g.pct}%</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {hasDrift && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 10, color: C.inkMuted, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>{r.driftTitle}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {pillarDrift.map(d => (
+                      <div key={d.pillar} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: C.surfaceAlt, border: `1px solid ${C.lineSoft}`, borderRadius: 10 }}>
+                        <AlertCircle size={14} color={d.diffPp < 0 ? C.red : C.inkSoft} />
+                        <span style={{ fontSize: 12, color: C.ink, lineHeight: 1.45 }}>
+                          {d.diffPp < 0 ? r.driftDown(labels[d.pillar], -d.diffPp) : r.driftUp(labels[d.pillar], d.diffPp)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {hasBenchmark && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 10, color: C.inkMuted, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>{r.benchmarkTitle}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {pillarBenchmarkGaps.map(b => (
+                      <div key={b.pillar} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: C.surfaceAlt, border: `1px solid ${C.lineSoft}`, borderRadius: 10 }}>
+                        <BarChart3 size={14} color={C.inkSoft} />
+                        <span style={{ fontSize: 12, color: C.ink, lineHeight: 1.45 }}>
+                          {b.diffPp > 0 ? r.benchmarkAbove(labels[b.pillar], b.currentPct, b.targetPct) : r.benchmarkBelow(labels[b.pillar], b.currentPct, b.targetPct)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button onClick={() => { setReviewOpen(false); setTab('allocate'); }} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: `1px solid ${C.line}`, background: C.surface, color: C.inkSoft, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 600 }}>
+                  {r.adjust}
+                </button>
+                <button onClick={() => setReviewOpen(false)} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: 'none', background: C.accent, color: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 700 }}>
+                  {r.cta}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {!keyboardOpen && (
         <>
           <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, height: 'calc(96px + env(safe-area-inset-bottom))', background: `linear-gradient(to top, ${C.bg} 55%, ${C.bg}00)`, pointerEvents: 'none', zIndex: 19 }} />
