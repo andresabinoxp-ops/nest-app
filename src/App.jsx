@@ -176,6 +176,9 @@ const copy = {
       surplusKeep: 'Save as is',
       surplusSplit: 'Split across Wealth',
       sendTo: (name) => `Send to ${name}`,
+      replaceTitle: 'Replace your current plan?',
+      replaceBody: 'Items stay; only the amounts change to follow the recommended pillar shares.',
+      replaceCta: 'Replace plan',
       templates: 'Or pick a template',
       lastMonth: (amt) => `Last month: ${amt}`,
       planSaved: 'Plan saved',
@@ -495,6 +498,9 @@ const copy = {
       surplusKeep: 'Salvar mesmo assim',
       surplusSplit: 'Dividir no Patrimônio',
       sendTo: (name) => `Mandar pra ${name}`,
+      replaceTitle: 'Substituir seu plano atual?',
+      replaceBody: 'Os itens continuam; apenas os valores mudam pra seguir as proporções recomendadas.',
+      replaceCta: 'Substituir plano',
       templates: 'Ou escolha um modelo',
       lastMonth: (amt) => `Mês passado: ${amt}`,
       planSaved: 'Plano salvo',
@@ -1332,6 +1338,7 @@ export default function FinanceApp() {
   });
   const [editingPillarTarget, setEditingPillarTarget] = useState(null);
   const [surplusRedirectOpen, setSurplusRedirectOpen] = useState(false);
+  const [pendingApply, setPendingApply] = useState(null);
   const [saveToast, setSaveToast] = useState(null);
 
   // UI state — don't persist editing flags etc.
@@ -2150,6 +2157,17 @@ export default function FinanceApp() {
     applySmartSplit(split);
   };
 
+  // Gate destructive apply (Smart Split / template) behind a confirmation
+  // sheet whenever the user already has an allocation in place. First-time
+  // setup (allocated === 0) applies directly.
+  const requestApply = (fn) => {
+    if (allocated > 0) {
+      setPendingApply(() => fn);
+    } else {
+      fn();
+    }
+  };
+
   const applySmartSplit = (split) => {
     // Aggregate the recommended split into pillar totals.
     const pillarTargets = { save: 0, bills: 0, spend: 0, debt: 0 };
@@ -2627,7 +2645,7 @@ export default function FinanceApp() {
                     <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.allocate.templates}</div>
                     <div style={{ display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4 }}>
                       {(lang === 'pt' ? TEMPLATES_PT : TEMPLATES_EN).map(tpl => (
-                        <button key={tpl.key} onClick={() => applyTemplate(tpl.key)} style={{ flexShrink: 0, minWidth: 130, textAlign: 'left', padding: '10px 12px', borderRadius: 12, border: `1px solid ${C.line}`, background: C.surfaceAlt, cursor: 'pointer', fontFamily: fontSans }}>
+                        <button key={tpl.key} onClick={() => requestApply(() => applyTemplate(tpl.key))} style={{ flexShrink: 0, minWidth: 130, textAlign: 'left', padding: '10px 12px', borderRadius: 12, border: `1px solid ${C.line}`, background: C.surfaceAlt, cursor: 'pointer', fontFamily: fontSans }}>
                           <div style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{tpl.name}</div>
                           <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 2 }}>{tpl.sub}</div>
                         </button>
@@ -2693,7 +2711,7 @@ export default function FinanceApp() {
                   t={t}
                   color={C.accent}
                   pillarsCopy={t.allocate.pillars}
-                  onApply={() => applySmartSplit(smartResult.balanced)}
+                  onApply={() => requestApply(() => applySmartSplit(smartResult.balanced))}
                 />
 
                 <SplitOptionCard
@@ -2706,7 +2724,7 @@ export default function FinanceApp() {
                   t={t}
                   color={C.accentDeep}
                   pillarsCopy={t.allocate.pillars}
-                  onApply={() => applySmartSplit(smartResult.focused)}
+                  onApply={() => requestApply(() => applySmartSplit(smartResult.focused))}
                   isFocused
                 />
               </>
@@ -2930,7 +2948,7 @@ export default function FinanceApp() {
                 {salary > 0 && (
                   <div style={{ display: 'flex', gap: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                     {(lang === 'pt' ? TEMPLATES_PT : TEMPLATES_EN).map(tpl => (
-                      <button key={tpl.key} onClick={() => applyTemplate(tpl.key)} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 999, border: `1px solid ${C.line}`, background: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600, color: C.inkSoft }}>
+                      <button key={tpl.key} onClick={() => requestApply(() => applyTemplate(tpl.key))} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 999, border: `1px solid ${C.line}`, background: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600, color: C.inkSoft }}>
                         {tpl.name}
                       </button>
                     ))}
@@ -2992,6 +3010,25 @@ export default function FinanceApp() {
                 </div>
               );
             })()}
+
+            {/* Replace plan confirmation */}
+            {pendingApply && (
+              <div onClick={() => setPendingApply(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)' }}>
+                  <div style={{ width: 36, height: 4, background: C.line, borderRadius: 2, margin: '0 auto 16px' }} />
+                  <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 6 }}>{t.allocate.replaceTitle}</div>
+                  <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 14, lineHeight: 1.5 }}>{t.allocate.replaceBody}</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setPendingApply(null)} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: `1px solid ${C.lineSoft}`, background: 'transparent', color: C.inkSoft, cursor: 'pointer', fontFamily: fontSans, fontSize: 14, fontWeight: 600 }}>
+                      {t.common.cancel}
+                    </button>
+                    <button onClick={() => { const fn = pendingApply; setPendingApply(null); fn && fn(); }} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: 'none', background: C.accent, color: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 14, fontWeight: 700 }}>
+                      {t.allocate.replaceCta}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
 
