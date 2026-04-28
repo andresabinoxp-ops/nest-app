@@ -13,12 +13,12 @@ import {
 const copy = {
   en: {
     locale: 'en-GB', currency: 'GBP', currencySymbol: '£', country: 'uk',
-    brand: 'Nest',
+    brand: 'Nort',
     nav: { home: 'Home', allocate: 'Allocate', goals: 'Goals', wealth: 'Wealth', forecast: 'Forecast' },
     month: { names: ['January','February','March','April','May','June','July','August','September','October','November','December'] },
     onboarding: {
       welcome: {
-        eyebrow: 'Welcome to Nest',
+        eyebrow: 'Welcome to Nort',
         title: 'Your money plan,',
         titleBold: 'in five taps.',
         sub: 'A simple monthly rhythm. No daily tracking.',
@@ -193,7 +193,7 @@ const copy = {
       ofTarget: 'of target',
       addSource: 'Add another income source',
       totalIncome: 'Total income',
-      planHint: 'Nest is a planner. Set how your money flows each month.',
+      planHint: 'Nort is a planner. Set how your money flows each month.',
       saved: 'Saved for',
       review: {
         eyebrow: 'Month review',
@@ -503,12 +503,12 @@ const copy = {
   },
   pt: {
     locale: 'pt-BR', currency: 'BRL', currencySymbol: 'R$', country: 'br',
-    brand: 'Nest',
+    brand: 'Nort',
     nav: { home: 'Início', allocate: 'Alocar', goals: 'Metas', wealth: 'Patrimônio', forecast: 'Previsão' },
     month: { names: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'] },
     onboarding: {
       welcome: {
-        eyebrow: 'Bem-vindo ao Nest',
+        eyebrow: 'Bem-vindo ao Nort',
         title: 'Seu plano financeiro,',
         titleBold: 'em cinco toques.',
         sub: 'Um ritmo mensal simples. Sem rastreio diário.',
@@ -683,7 +683,7 @@ const copy = {
       ofTarget: 'do alvo',
       addSource: 'Adicionar outra fonte de renda',
       totalIncome: 'Renda total',
-      planHint: 'O Nest é um planejador. Defina como seu dinheiro flui a cada mês.',
+      planHint: 'O Nort é um planejador. Defina como seu dinheiro flui a cada mês.',
       saved: 'Salvo em',
       review: {
         eyebrow: 'Resumo do mês',
@@ -2943,7 +2943,11 @@ export default function FinanceApp() {
     <div style={s.app}>
       <div style={s.topbar}>
         <div style={s.brandWrap}>
-          <div style={s.brandMark}>N</div>
+          <div style={s.brandMark} aria-label={t.brand}>
+            <svg width="14" height="14" viewBox="0 0 512 512" aria-hidden="true">
+              <path d="M150 360V152h44l124 138V152l22-52 22 52v208h-44L194 222v138z" fill="#FFFFFF"/>
+            </svg>
+          </div>
           <div style={s.brand}>{t.brand}</div>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>

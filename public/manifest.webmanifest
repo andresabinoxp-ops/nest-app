@@ -1,7 +1,7 @@
 {
-  "name": "Nest",
-  "short_name": "Nest",
-  "description": "Plan. Grow. Reflect monthly.",
+  "name": "Nort",
+  "short_name": "Nort",
+  "description": "Plan the month. See the years.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
