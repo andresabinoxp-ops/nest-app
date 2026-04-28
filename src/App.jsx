@@ -127,9 +127,9 @@ const copy = {
       savePlan: 'Save this month',
       newItem: 'New item',
       pillars: {
-        needs: { name: 'Needs', sub: 'Things you must pay', color: '#3B82F6' },
-        wants: { name: 'Wants', sub: 'Things you choose', color: '#A855F7' },
-        wealth: { name: 'Wealth', sub: 'Your future self', color: '#2E8B88' },
+        save: { name: 'Save', sub: 'Pay yourself first', color: '#2E8B88' },
+        bills: { name: 'Bills', sub: 'Fixed monthly costs', color: '#3B82F6' },
+        spend: { name: 'Spend', sub: 'Day-to-day variable costs', color: '#A855F7' },
         debt: { name: 'Debt', sub: 'Money you\'re paying down', color: '#E06B53' },
       },
       total: 'Allocated',
@@ -430,9 +430,9 @@ const copy = {
       savePlan: 'Salvar este mês',
       newItem: 'Novo item',
       pillars: {
-        needs: { name: 'Necessidades', sub: 'O que você precisa pagar', color: '#3B82F6' },
-        wants: { name: 'Desejos', sub: 'O que você escolhe', color: '#A855F7' },
-        wealth: { name: 'Patrimônio', sub: 'Seu eu futuro', color: '#2E8B88' },
+        save: { name: 'Guardar', sub: 'Pague-se primeiro', color: '#2E8B88' },
+        bills: { name: 'Contas', sub: 'Despesas fixas mensais', color: '#3B82F6' },
+        spend: { name: 'Gastos', sub: 'Despesas variáveis do dia a dia', color: '#A855F7' },
         debt: { name: 'Dívidas', sub: 'Dívidas em pagamento', color: '#E06B53' },
       },
       total: 'Alocado',
@@ -700,35 +700,44 @@ const PROFILE_BUCKETS = {
 // ============================================================
 const DEFAULT_ITEMS = {
   en: [
-    { pillar: 'needs', name: 'Housing', icon: 'house', benchmarkKey: 'housing' },
-    { pillar: 'needs', name: 'Utilities', icon: 'line', benchmarkKey: 'utilities' },
-    { pillar: 'needs', name: 'Groceries', icon: 'bag', benchmarkKey: 'groceries' },
-    { pillar: 'needs', name: 'Transport', icon: 'car', benchmarkKey: 'transport' },
-    { pillar: 'wants', name: 'Lifestyle', icon: 'gem', benchmarkKey: 'lifestyle' },
-    { pillar: 'wealth', name: 'Emergency fund', icon: 'shield', benchmarkKey: 'emergency' },
-    { pillar: 'wealth', name: 'Savings', icon: 'piggy', benchmarkKey: 'savings' },
-    { pillar: 'wealth', name: 'Investments', icon: 'line', benchmarkKey: 'investments' },
+    { pillar: 'save', name: 'Emergency fund', icon: 'shield', benchmarkKey: 'emergency' },
+    { pillar: 'save', name: 'Savings', icon: 'piggy', benchmarkKey: 'savings' },
+    { pillar: 'save', name: 'Investments', icon: 'line', benchmarkKey: 'investments' },
+    { pillar: 'bills', name: 'Housing', icon: 'house', benchmarkKey: 'housing' },
+    { pillar: 'bills', name: 'Utilities', icon: 'line', benchmarkKey: 'utilities' },
+    { pillar: 'spend', name: 'Groceries', icon: 'bag', benchmarkKey: 'groceries' },
+    { pillar: 'spend', name: 'Transport', icon: 'car', benchmarkKey: 'transport' },
+    { pillar: 'spend', name: 'Lifestyle', icon: 'gem', benchmarkKey: 'lifestyle' },
   ],
   pt: [
-    { pillar: 'needs', name: 'Moradia', icon: 'house', benchmarkKey: 'housing' },
-    { pillar: 'needs', name: 'Contas', icon: 'line', benchmarkKey: 'utilities' },
-    { pillar: 'needs', name: 'Mercado', icon: 'bag', benchmarkKey: 'groceries' },
-    { pillar: 'needs', name: 'Transporte', icon: 'car', benchmarkKey: 'transport' },
-    { pillar: 'wants', name: 'Lazer', icon: 'gem', benchmarkKey: 'lifestyle' },
-    { pillar: 'wealth', name: 'Reserva', icon: 'shield', benchmarkKey: 'emergency' },
-    { pillar: 'wealth', name: 'Poupança', icon: 'piggy', benchmarkKey: 'savings' },
-    { pillar: 'wealth', name: 'Investimentos', icon: 'line', benchmarkKey: 'investments' },
+    { pillar: 'save', name: 'Reserva', icon: 'shield', benchmarkKey: 'emergency' },
+    { pillar: 'save', name: 'Poupança', icon: 'piggy', benchmarkKey: 'savings' },
+    { pillar: 'save', name: 'Investimentos', icon: 'line', benchmarkKey: 'investments' },
+    { pillar: 'bills', name: 'Moradia', icon: 'house', benchmarkKey: 'housing' },
+    { pillar: 'bills', name: 'Contas', icon: 'line', benchmarkKey: 'utilities' },
+    { pillar: 'spend', name: 'Mercado', icon: 'bag', benchmarkKey: 'groceries' },
+    { pillar: 'spend', name: 'Transporte', icon: 'car', benchmarkKey: 'transport' },
+    { pillar: 'spend', name: 'Lazer', icon: 'gem', benchmarkKey: 'lifestyle' },
   ],
 };
 
 // Benchmarks available per pillar. Used by the inline-edit picker so an item
-// in the Wealth pillar can't accidentally be compared against the Housing
+// in the Save pillar can't accidentally be compared against the Housing
 // benchmark, etc.
 const PILLAR_BENCHMARKS = {
-  needs: ['housing', 'utilities', 'groceries', 'transport'],
-  wants: ['lifestyle'],
-  wealth: ['savings', 'emergency', 'investments'],
+  save: ['savings', 'emergency', 'investments'],
+  bills: ['housing', 'utilities'],
+  spend: ['groceries', 'transport', 'lifestyle'],
   debt: ['debt'],
+};
+
+// Maps a benchmark key to its pillar. Used by Smart Split / templates to
+// route generated items into the right pillar.
+const BENCHMARK_TO_PILLAR = {
+  housing: 'bills', utilities: 'bills',
+  groceries: 'spend', transport: 'spend', lifestyle: 'spend',
+  emergency: 'save', savings: 'save', investments: 'save',
+  debt: 'debt',
 };
 
 // Named templates: faster, less personalised alternative to Smart Split.
@@ -751,21 +760,25 @@ const TEMPLATES_PT = [
 // Suggestion chips used to seed an empty pillar.
 const STARTER_ITEMS = {
   en: {
-    needs: [
-      { name: 'Rent', icon: 'house', benchmarkKey: 'housing' },
-      { name: 'Utilities', icon: 'line', benchmarkKey: 'utilities' },
-      { name: 'Groceries', icon: 'bag', benchmarkKey: 'groceries' },
-      { name: 'Transport', icon: 'car', benchmarkKey: 'transport' },
-    ],
-    wants: [
-      { name: 'Subscriptions', icon: 'gem', benchmarkKey: 'lifestyle' },
-      { name: 'Dining', icon: 'gem', benchmarkKey: 'lifestyle' },
-      { name: 'Travel', icon: 'gem', benchmarkKey: 'lifestyle' },
-    ],
-    wealth: [
+    save: [
       { name: 'Emergency fund', icon: 'shield', benchmarkKey: 'emergency' },
       { name: 'Savings', icon: 'piggy', benchmarkKey: 'savings' },
       { name: 'Investments', icon: 'line', benchmarkKey: 'investments' },
+    ],
+    bills: [
+      { name: 'Rent', icon: 'house', benchmarkKey: 'housing' },
+      { name: 'Council tax', icon: 'house', benchmarkKey: null },
+      { name: 'Utilities', icon: 'line', benchmarkKey: 'utilities' },
+      { name: 'Internet', icon: 'line', benchmarkKey: null },
+      { name: 'Mobile', icon: 'line', benchmarkKey: null },
+      { name: 'Insurance', icon: 'shield', benchmarkKey: null },
+    ],
+    spend: [
+      { name: 'Groceries', icon: 'bag', benchmarkKey: 'groceries' },
+      { name: 'Transport', icon: 'car', benchmarkKey: 'transport' },
+      { name: 'Dining out', icon: 'gem', benchmarkKey: 'lifestyle' },
+      { name: 'Hobbies', icon: 'gem', benchmarkKey: 'lifestyle' },
+      { name: 'Personal cash', icon: 'gem', benchmarkKey: null },
     ],
     debt: [
       { name: 'Credit card', icon: 'card', benchmarkKey: 'debt' },
@@ -773,21 +786,25 @@ const STARTER_ITEMS = {
     ],
   },
   pt: {
-    needs: [
-      { name: 'Aluguel', icon: 'house', benchmarkKey: 'housing' },
-      { name: 'Contas', icon: 'line', benchmarkKey: 'utilities' },
-      { name: 'Mercado', icon: 'bag', benchmarkKey: 'groceries' },
-      { name: 'Transporte', icon: 'car', benchmarkKey: 'transport' },
-    ],
-    wants: [
-      { name: 'Assinaturas', icon: 'gem', benchmarkKey: 'lifestyle' },
-      { name: 'Restaurantes', icon: 'gem', benchmarkKey: 'lifestyle' },
-      { name: 'Viagens', icon: 'gem', benchmarkKey: 'lifestyle' },
-    ],
-    wealth: [
+    save: [
       { name: 'Reserva', icon: 'shield', benchmarkKey: 'emergency' },
       { name: 'Poupança', icon: 'piggy', benchmarkKey: 'savings' },
       { name: 'Investimentos', icon: 'line', benchmarkKey: 'investments' },
+    ],
+    bills: [
+      { name: 'Aluguel', icon: 'house', benchmarkKey: 'housing' },
+      { name: 'Condomínio', icon: 'house', benchmarkKey: null },
+      { name: 'Contas (luz/água/gás)', icon: 'line', benchmarkKey: 'utilities' },
+      { name: 'Internet', icon: 'line', benchmarkKey: null },
+      { name: 'Celular', icon: 'line', benchmarkKey: null },
+      { name: 'Seguros', icon: 'shield', benchmarkKey: null },
+    ],
+    spend: [
+      { name: 'Mercado', icon: 'bag', benchmarkKey: 'groceries' },
+      { name: 'Transporte', icon: 'car', benchmarkKey: 'transport' },
+      { name: 'Restaurantes', icon: 'gem', benchmarkKey: 'lifestyle' },
+      { name: 'Hobbies', icon: 'gem', benchmarkKey: 'lifestyle' },
+      { name: 'Dinheiro pessoal', icon: 'gem', benchmarkKey: null },
     ],
     debt: [
       { name: 'Cartão', icon: 'card', benchmarkKey: 'debt' },
@@ -1204,7 +1221,14 @@ export default function FinanceApp() {
   const removeIncomeSource = (id) => {
     setIncomeSources(prev => prev.length <= 1 ? prev : prev.filter(s => s.id !== id));
   };
-  const [items, setItems] = useState(saved?.items || []);
+  const [items, setItems] = useState(() => (saved?.items || []).map(it => {
+    if (['save', 'bills', 'spend', 'debt'].includes(it.pillar)) return it;
+    let pillar = it.pillar;
+    if (pillar === 'needs') pillar = ['housing', 'utilities'].includes(it.benchmarkKey) ? 'bills' : 'spend';
+    else if (pillar === 'wants') pillar = 'spend';
+    else if (pillar === 'wealth') pillar = 'save';
+    return { ...it, pillar };
+  }));
   const [buckets, setBuckets] = useState(saved?.buckets || []);
   const [goals, setGoals] = useState(saved?.goals || []);
 
@@ -1213,9 +1237,33 @@ export default function FinanceApp() {
   const [lastCheckIn, setLastCheckIn] = useState(saved?.lastCheckIn || null);
   const [checkInStreak, setCheckInStreak] = useState(saved?.checkInStreak || 0);
   // Target pillar percentages, set when the user applies a Smart Split.
-  const [targetSplitPct, setTargetSplitPct] = useState(saved?.targetSplitPct || null);
+  const [targetSplitPct, setTargetSplitPct] = useState(() => {
+    const t = saved?.targetSplitPct;
+    if (!t) return null;
+    if (t.save != null || t.bills != null || t.spend != null) return t;
+    // Migrate from old keys
+    return {
+      save: t.wealth || 0,
+      bills: Math.round((t.needs || 0) * 0.6),
+      spend: Math.round((t.needs || 0) * 0.4) + (t.wants || 0),
+      debt: t.debt || 0,
+    };
+  });
   // Manual pillar targets in absolute currency. Optional, top-down planning.
-  const [pillarTargets, setPillarTargets] = useState(saved?.pillarTargets || {});
+  const [pillarTargets, setPillarTargets] = useState(() => {
+    const t = saved?.pillarTargets || {};
+    if (Object.keys(t).some(k => ['save', 'bills', 'spend'].includes(k))) return t;
+    // Migrate from old keys
+    const out = { ...t };
+    if (t.wealth != null) out.save = t.wealth;
+    if (t.wants != null) out.spend = (out.spend || 0) + t.wants;
+    if (t.needs != null) {
+      out.bills = (out.bills || 0) + Math.round(t.needs * 0.6);
+      out.spend = (out.spend || 0) + Math.round(t.needs * 0.4);
+    }
+    delete out.needs; delete out.wants; delete out.wealth;
+    return out;
+  });
   const [editingPillarTarget, setEditingPillarTarget] = useState(null);
   const [surplusRedirectOpen, setSurplusRedirectOpen] = useState(false);
   const [saveToast, setSaveToast] = useState(null);
@@ -1287,7 +1335,7 @@ export default function FinanceApp() {
 
   // Pillar totals
   const pillarTotals = useMemo(() => {
-    const out = { needs: 0, wants: 0, wealth: 0, debt: 0 };
+    const out = { save: 0, bills: 0, spend: 0, debt: 0 };
     items.forEach(i => { out[i.pillar] = (out[i.pillar] || 0) + (Number(i.amount) || 0); });
     return out;
   }, [items]);
@@ -1970,20 +2018,19 @@ export default function FinanceApp() {
   };
   const removeItem = (id) => setItems(items.filter(c => c.id !== id));
   const computePillarPctFromSplit = (split) => {
-    const pillarMap = { housing: 'needs', utilities: 'needs', groceries: 'needs', transport: 'needs', lifestyle: 'wants', emergency: 'wealth', savings: 'wealth', investments: 'wealth', debt: 'debt' };
-    const totals = { needs: 0, wants: 0, wealth: 0, debt: 0 };
+    const totals = { save: 0, bills: 0, spend: 0, debt: 0 };
     let sum = 0;
     Object.entries(split).forEach(([k, amt]) => {
-      const p = pillarMap[k];
+      const p = BENCHMARK_TO_PILLAR[k];
       if (!p) return;
       totals[p] += Number(amt) || 0;
       sum += Number(amt) || 0;
     });
     if (sum === 0) return null;
     return {
-      needs: Math.round((totals.needs / sum) * 100),
-      wants: Math.round((totals.wants / sum) * 100),
-      wealth: Math.round((totals.wealth / sum) * 100),
+      save: Math.round((totals.save / sum) * 100),
+      bills: Math.round((totals.bills / sum) * 100),
+      spend: Math.round((totals.spend / sum) * 100),
       debt: Math.round((totals.debt / sum) * 100),
     };
   };
@@ -2002,7 +2049,7 @@ export default function FinanceApp() {
       ? { housing: 'Housing', utilities: 'Utilities', groceries: 'Groceries', transport: 'Transport', lifestyle: 'Lifestyle', emergency: 'Emergency fund', savings: 'Savings', investments: 'Investments', debt: 'Debt payoff' }
       : { housing: 'Moradia', utilities: 'Contas', groceries: 'Mercado', transport: 'Transporte', lifestyle: 'Lazer', emergency: 'Reserva', savings: 'Poupança', investments: 'Investimentos', debt: 'Quitar dívidas' };
     const iconMap = { housing: 'house', utilities: 'line', groceries: 'bag', transport: 'car', lifestyle: 'gem', emergency: 'shield', savings: 'piggy', investments: 'line', debt: 'card' };
-    const pillarMap = { housing: 'needs', utilities: 'needs', groceries: 'needs', transport: 'needs', lifestyle: 'wants', emergency: 'wealth', savings: 'wealth', investments: 'wealth', debt: 'debt' };
+    const pillarMap = BENCHMARK_TO_PILLAR;
     const benchmarkMap = { housing: 'housing', utilities: 'utilities', groceries: 'groceries', transport: 'transport', lifestyle: 'lifestyle', emergency: 'emergency', savings: 'savings', investments: 'investments', debt: 'debt' };
 
     const newItems = Object.entries(split)
@@ -2267,7 +2314,7 @@ export default function FinanceApp() {
                 ) : (
                   <>
                     <div style={{ display: 'flex', height: 14, borderRadius: 8, overflow: 'hidden', background: C.lineSoft }}>
-                      {['needs', 'wants', 'wealth', 'debt'].map(p => {
+                      {['save', 'bills', 'spend', 'debt'].map(p => {
                         const amt = pillarTotals[p] || 0;
                         if (amt === 0) return null;
                         const pct = (amt / allocated) * 100;
@@ -2275,7 +2322,7 @@ export default function FinanceApp() {
                       })}
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px', marginTop: 12 }}>
-                      {['needs', 'wants', 'wealth', 'debt'].map(p => {
+                      {['save', 'bills', 'spend', 'debt'].map(p => {
                         const amt = pillarTotals[p] || 0;
                         const pct = allocated > 0 ? Math.round((amt / allocated) * 100) : 0;
                         return (
@@ -2399,7 +2446,7 @@ export default function FinanceApp() {
             )}
 
             {/* Pillars */}
-            {['needs', 'wants', 'wealth', 'debt'].map(pillarKey => {
+            {['save', 'bills', 'spend', 'debt'].map(pillarKey => {
               const pillar = t.allocate.pillars[pillarKey];
               const pillarItems = itemsByPillar(pillarKey);
               const pillarTotal = pillarTotals[pillarKey] || 0;
@@ -3471,11 +3518,11 @@ function SplitOptionCard({ title, sub, badge, tradeoff, split, salary, t, color,
   };
 
   // Group split by pillar
-  const pillarMap = { housing: 'needs', utilities: 'needs', groceries: 'needs', transport: 'needs', lifestyle: 'wants', emergency: 'wealth', savings: 'wealth', investments: 'wealth', debt: 'debt' };
-  const pillarTotals = { needs: 0, wants: 0, wealth: 0, debt: 0 };
+  const pillarMap = { housing: 'bills', utilities: 'bills', groceries: 'spend', transport: 'spend', lifestyle: 'spend', emergency: 'save', savings: 'save', investments: 'save', debt: 'debt' };
+  const pillarTotals = { save: 0, bills: 0, spend: 0, debt: 0 };
   Object.entries(split).forEach(([k, v]) => { if (pillarMap[k]) pillarTotals[pillarMap[k]] += v; });
 
-  const pillarOrder = ['needs', 'wants', 'wealth', 'debt'];
+  const pillarOrder = ['save', 'bills', 'spend', 'debt'];
 
   return (
     <div style={{
