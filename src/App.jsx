@@ -254,6 +254,7 @@ const copy = {
         sub: 'Trim Spend by this much and add it to Save. This commits you to spending less in real life — pick where.',
         amount: 'Amount to shift',
         consequenceGoal: (goal, months) => `${goal} ${months}mo sooner`,
+        consequenceNewEta: (goal, months) => `${goal} in ~${months}mo`,
         consequenceWealth: (amt) => `+${amt}/yr to your wealth`,
         consequenceLabel: '→',
         apply: 'Apply shift',
@@ -744,6 +745,7 @@ const copy = {
         sub: 'Corte o Gasto neste valor e mande pra Guardar. Isso te compromete a gastar menos de verdade — escolha onde cortar.',
         amount: 'Quanto trocar',
         consequenceGoal: (goal, months) => `${goal} ${months} meses antes`,
+        consequenceNewEta: (goal, months) => `${goal} em ~${months} meses`,
         consequenceWealth: (amt) => `+${amt}/ano no seu patrimônio`,
         consequenceLabel: '→',
         apply: 'Aplicar troca',
@@ -4905,18 +4907,29 @@ export default function FinanceApp() {
         const spendTotal = spendItems.reduce((s, i) => s + Number(i.amount), 0);
         const max = Math.floor(spendTotal);
         const amt = Math.max(0, Math.min(max, Number(swapAmount) || 0));
-        // Consequence: if a goal is in flight, compute months saved; else show wealth/year.
-        const candidates = goals.filter(g => Number(g.target) > 0 && Number(g.current) < Number(g.target) && (Number(g.monthly) > 0 || amt > 0));
+        // Consequence: pick a goal in flight to anchor the message.
+        // - If the goal already has a monthly contribution, show "X months sooner"
+        //   (the swap accelerates the existing pace).
+        // - If it has no monthly yet, show the new ETA from this swap alone —
+        //   never compare to a fake "1 R$/month" baseline (that produced
+        //   nonsense like "9679 months sooner").
+        // - Fallback: wealth/year.
+        const candidates = goals.filter(g => Number(g.target) > 0 && Number(g.current) < Number(g.target));
         const goal = candidates.find(g => g.deadline) || candidates[0];
         let consequenceText = sw.consequenceWealth(fmt(amt * 12, t));
-        if (goal) {
+        if (goal && amt > 0) {
           const remaining = Math.max(0, Number(goal.target) - Number(goal.current));
-          const oldMonthly = Math.max(1, Number(goal.monthly) || 0);
-          const newMonthly = oldMonthly + amt;
-          const oldMonths = Math.ceil(remaining / oldMonthly);
-          const newMonths = Math.ceil(remaining / newMonthly);
-          const saved = oldMonths - newMonths;
-          if (saved >= 1) consequenceText = sw.consequenceGoal(goal.name, saved);
+          const currentMonthly = Number(goal.monthly) || 0;
+          if (currentMonthly > 0) {
+            const newMonthly = currentMonthly + amt;
+            const oldMonths = Math.ceil(remaining / currentMonthly);
+            const newMonths = Math.ceil(remaining / newMonthly);
+            const saved = oldMonths - newMonths;
+            if (saved >= 1) consequenceText = sw.consequenceGoal(goal.name, saved);
+          } else {
+            const newMonths = Math.ceil(remaining / amt);
+            consequenceText = sw.consequenceNewEta(goal.name, newMonths);
+          }
         }
         return (
           <div onClick={() => setSwapOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
