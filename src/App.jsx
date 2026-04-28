@@ -251,6 +251,28 @@ const copy = {
       editGoal: 'Edit',
       delete: 'Remove',
       new: 'New goal',
+      overviewSaved: 'saved',
+      overviewToGo: 'to go',
+      overviewCount: (n) => n === 1 ? '1 goal' : `${n} goals`,
+      monthsLeft: (n) => n === 0 ? 'Reaching this month' : n === 1 ? '1 month left' : `${n} months left`,
+      reachedBy: (label) => `Reached by ${label}`,
+      noEta: 'Set a monthly amount to see when you\'ll reach it',
+      complete: 'Complete!',
+      quickAdd: 'Add to goal',
+      deposit: 'Deposit',
+      withdraw: 'Withdraw',
+      apply: 'Apply',
+      amount: 'Amount',
+      starterTitle: 'Quick start',
+      starterSub: 'Pick a goal to begin',
+      starters: [
+        { key: 'emergency', name: 'Emergency fund', icon: 'shield', target: 10000, type: 'savings' },
+        { key: 'vacation', name: 'Vacation', icon: 'plane', target: 3000, type: 'savings' },
+        { key: 'home', name: 'Home deposit', icon: 'house', target: 30000, type: 'savings' },
+        { key: 'wedding', name: 'Wedding', icon: 'gem', target: 15000, type: 'savings' },
+        { key: 'car', name: 'New car', icon: 'car', target: 12000, type: 'savings' },
+        { key: 'debt', name: 'Pay off debt', icon: 'card', target: 5000, type: 'debt' },
+      ],
     },
     wealth: {
       title: 'Wealth',
@@ -577,6 +599,28 @@ const copy = {
       debt: 'Dívida',
       editGoal: 'Editar',
       delete: 'Remover',
+      overviewSaved: 'guardado',
+      overviewToGo: 'pra ir',
+      overviewCount: (n) => n === 1 ? '1 meta' : `${n} metas`,
+      monthsLeft: (n) => n === 0 ? 'Conquistando este mês' : n === 1 ? '1 mês restante' : `${n} meses restantes`,
+      reachedBy: (label) => `Conquista em ${label}`,
+      noEta: 'Defina um valor mensal pra ver quando vai conquistar',
+      complete: 'Conquistado!',
+      quickAdd: 'Adicionar à meta',
+      deposit: 'Depositar',
+      withdraw: 'Retirar',
+      apply: 'Aplicar',
+      amount: 'Valor',
+      starterTitle: 'Início rápido',
+      starterSub: 'Escolha uma meta pra começar',
+      starters: [
+        { key: 'emergency', name: 'Reserva de emergência', icon: 'shield', target: 30000, type: 'savings' },
+        { key: 'vacation', name: 'Férias', icon: 'plane', target: 10000, type: 'savings' },
+        { key: 'home', name: 'Entrada da casa', icon: 'house', target: 80000, type: 'savings' },
+        { key: 'wedding', name: 'Casamento', icon: 'gem', target: 40000, type: 'savings' },
+        { key: 'car', name: 'Carro novo', icon: 'car', target: 50000, type: 'savings' },
+        { key: 'debt', name: 'Quitar dívidas', icon: 'card', target: 10000, type: 'debt' },
+      ],
       new: 'Nova meta',
     },
     wealth: {
@@ -1363,6 +1407,9 @@ export default function FinanceApp() {
   const [confirmRemove, setConfirmRemove] = useState(null); // { bucketId, idx }
   const [expandedHistoryIds, setExpandedHistoryIds] = useState([]);
   const [editingGoalId, setEditingGoalId] = useState(null);
+  const [txGoalId, setTxGoalId] = useState(null);
+  const [txGoalMode, setTxGoalMode] = useState('deposit');
+  const [txGoalAmount, setTxGoalAmount] = useState('');
   const [scenarioExtra, setScenarioExtra] = useState(0);
 
   // Smart split flow — don't persist
@@ -2304,11 +2351,31 @@ export default function FinanceApp() {
   const updateGoal = (id, field, value) => {
     setGoals(goals.map(g => g.id === id ? { ...g, [field]: ['target', 'current', 'monthly'].includes(field) ? (value === '' ? 0 : Number(value)) : value } : g));
   };
-  const removeGoal = (id) => { setGoals(goals.filter(g => g.id !== id)); if (editingGoalId === id) setEditingGoalId(null); };
+  const removeGoal = (id) => { setGoals(goals.filter(g => g.id !== id)); if (editingGoalId === id) setEditingGoalId(null); if (txGoalId === id) setTxGoalId(null); };
   const addGoal = () => {
     const newGoal = { id: Math.random().toString(36), name: t.goals.new, icon: 'circle', type: 'savings', target: 1000, current: 0, monthly: 0 };
     setGoals([...goals, newGoal]);
     setEditingGoalId(newGoal.id);
+  };
+
+  const addGoalFromPreset = (preset) => {
+    const id = Math.random().toString(36);
+    setGoals([...goals, { id, name: preset.name, icon: preset.icon, type: preset.type || 'savings', target: preset.target, current: 0, monthly: 0 }]);
+    setEditingGoalId(id);
+  };
+
+  const applyGoalTx = (id) => {
+    const amt = Number(txGoalAmount);
+    if (!amt || amt <= 0) return;
+    const delta = txGoalMode === 'withdraw' ? -amt : amt;
+    setGoals(goals.map(g => {
+      if (g.id !== id) return g;
+      const newCurrent = Math.max(0, (Number(g.current) || 0) + delta);
+      const entry = { ts: Date.now(), delta, balanceAfter: newCurrent };
+      return { ...g, current: newCurrent, history: [...(g.history || []), entry] };
+    }));
+    setTxGoalId(null);
+    setTxGoalAmount('');
   };
 
   const pieData = buckets.filter(b => b.current > 0).map(b => ({ name: b.name, value: Number(b.current), key: b.id, color: BUCKET_COLORS[b.type] || C.inkMuted }));
@@ -3085,13 +3152,72 @@ export default function FinanceApp() {
               <div style={s.sub}>{t.goals.sub}</div>
             </div>
 
+            {/* Goals overview hero */}
+            {goals.length > 0 && (() => {
+              const totalTarget = goals.reduce((sum, g) => sum + (Number(g.target) || 0), 0);
+              const totalCurrent = goals.reduce((sum, g) => sum + (Number(g.current) || 0), 0);
+              const remaining = Math.max(0, totalTarget - totalCurrent);
+              const pct = totalTarget > 0 ? Math.min(100, (totalCurrent / totalTarget) * 100) : 0;
+              return (
+                <div style={s.heroCard}>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.85, marginBottom: 10 }}>
+                    {t.goals.overviewCount(goals.length)}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
+                    <span style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmtShort(totalCurrent, t)}</span>
+                    <span style={{ fontSize: 12, opacity: 0.85 }}>/ {fmtShort(totalTarget, t)}</span>
+                  </div>
+                  <div style={{ height: 8, background: 'rgba(255,255,255,0.25)', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${pct}%`, background: C.surface, borderRadius: 4 }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, fontSize: 12 }}>
+                    <span style={{ opacity: 0.85 }}>{fmtShort(totalCurrent, t)} {t.goals.overviewSaved}</span>
+                    <span style={{ opacity: 0.85 }}>{fmtShort(remaining, t)} {t.goals.overviewToGo}</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Empty state with starter chips */}
+            {goals.length === 0 && (
+              <div style={s.card}>
+                <div style={{ ...s.cardLabel, marginBottom: 4 }}>{t.goals.starterTitle}</div>
+                <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 14 }}>{t.goals.starterSub}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {t.goals.starters.map(p => (
+                    <button key={p.key} onClick={() => addGoalFromPreset(p)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, border: `1px solid ${C.line}`, background: C.surface, cursor: 'pointer', fontFamily: fontSans, textAlign: 'left' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: (p.type === 'debt' ? C.redSoft : C.accentSoft), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {renderIcon(p.icon, 14, p.type === 'debt' ? C.red : C.accent, 2)}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                        <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 2 }}>{fmtShort(p.target, t)}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {goals.map(g => {
               const pct = g.target > 0 ? Math.round((g.current / g.target) * 100) : 0;
               const isEditing = editingGoalId === g.id;
+              const isTx = txGoalId === g.id;
+              const isDebt = g.type === 'debt';
+              const isComplete = pct >= 100;
+              const remaining = Math.max(0, (Number(g.target) || 0) - (Number(g.current) || 0));
+              const months = (Number(g.monthly) || 0) > 0 ? Math.ceil(remaining / Number(g.monthly)) : null;
+              const targetDate = months != null && months > 0 ? (() => {
+                const d = new Date();
+                d.setMonth(d.getMonth() + months);
+                return `${t.month.names[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
+              })() : null;
               return (
                 <div key={g.id} style={s.card}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                    <div style={s.rowIconBox}>{renderIcon(g.icon, 16, C.accent, 2)}</div>
+                    <div style={{ ...s.rowIconBox, background: isDebt ? C.redSoft : C.accentSoft }}>
+                      {renderIcon(g.icon, 16, isDebt ? C.red : C.accent, 2)}
+                    </div>
                     {isEditing ? (
                       <input style={{ ...s.input, flex: 1, padding: '8px 12px', fontSize: 16 }} value={g.name} onChange={(e) => updateGoal(g.id, 'name', e.target.value)} />
                     ) : (
@@ -3100,22 +3226,60 @@ export default function FinanceApp() {
                     {isEditing ? (
                       <button style={s.ghostBtn} onClick={() => setEditingGoalId(null)}><Check size={14} /></button>
                     ) : (
-                      <div style={{ ...s.num, fontSize: 18, color: g.type === 'debt' ? C.red : C.ink }}>{fmt(g.current, t)}</div>
+                      <>
+                        <div style={{ ...s.num, fontSize: 18, color: isDebt ? C.red : C.ink }}>{fmt(g.current, t)}</div>
+                        <button onClick={() => { setTxGoalId(isTx ? null : g.id); setTxGoalMode('deposit'); setTxGoalAmount(''); }} style={{ background: isTx ? (isDebt ? C.redSoft : C.accentSoft) : 'transparent', border: 'none', cursor: 'pointer', color: isTx ? (isDebt ? C.red : C.accent) : C.inkMuted, padding: 6, borderRadius: 8, display: 'flex', alignItems: 'center' }} aria-label={t.goals.quickAdd}>
+                          <Plus size={14} />
+                        </button>
+                      </>
                     )}
                   </div>
 
                   {!isEditing && (
                     <>
-                      <div style={s.progressTrack}><div style={s.progressFill(pct)} /></div>
+                      <div style={s.progressTrack}><div style={{ ...s.progressFill(pct), background: isDebt ? C.red : C.accent }} /></div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: C.inkMuted }}>
                         <span>{fmt(0, t)}</span>
                         <span style={{ fontWeight: 600, color: C.ink }}>{pct}%</span>
                         <span>{fmt(g.target, t)}</span>
                       </div>
+
+                      {/* Time-to-target */}
+                      {isComplete ? (
+                        <div style={{ marginTop: 10, padding: '8px 12px', background: C.accentSoft, color: C.accent, borderRadius: 10, fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <Check size={13} strokeWidth={3} /> {t.goals.complete}
+                        </div>
+                      ) : months != null ? (
+                        <div style={{ marginTop: 10, fontSize: 12, color: C.inkSoft }}>
+                          {t.goals.monthsLeft(months)}{targetDate ? ` · ${t.goals.reachedBy(targetDate)}` : ''}
+                        </div>
+                      ) : (
+                        <div style={{ marginTop: 10, fontSize: 11, color: C.inkMuted, fontStyle: 'italic' }}>{t.goals.noEta}</div>
+                      )}
+
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, fontSize: 12, color: C.inkSoft }}>
                         <span>{t.goals.monthly} <strong style={{ color: C.ink, ...s.num }}>{fmt(g.monthly, t)}</strong></span>
                         <button style={s.ghostBtn} onClick={() => setEditingGoalId(g.id)}><Pencil size={11} /> {t.goals.editGoal}</button>
                       </div>
+
+                      {/* Quick contribute panel */}
+                      {isTx && (
+                        <div style={{ marginTop: 12, padding: 12, background: C.surfaceAlt, borderRadius: 12 }}>
+                          <div style={{ display: 'flex', gap: 3, background: C.surface, padding: 3, borderRadius: 999, marginBottom: 10 }}>
+                            {['deposit', 'withdraw'].map(m => (
+                              <button key={m} onClick={() => setTxGoalMode(m)} style={{ flex: 1, padding: '6px 10px', border: 'none', borderRadius: 999, cursor: 'pointer', fontFamily: fontSans, fontSize: 12, fontWeight: 600, background: txGoalMode === m ? (m === 'deposit' ? C.accent : C.red) : 'transparent', color: txGoalMode === m ? C.surface : C.inkSoft }}>
+                                {m === 'deposit' ? t.goals.deposit : t.goals.withdraw}
+                              </button>
+                            ))}
+                          </div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <MoneyInput value={txGoalAmount} t={t} style={{ ...s.inputNum, flex: 1, width: 'auto', minWidth: 0, textAlign: 'left' }} placeholder={t.goals.amount} onChange={(v) => setTxGoalAmount(v)} />
+                            <button onClick={() => applyGoalTx(g.id)} disabled={!Number(txGoalAmount)} style={{ flexShrink: 0, background: !Number(txGoalAmount) ? C.line : (txGoalMode === 'deposit' ? C.accent : C.red), color: C.surface, border: 'none', padding: '0 16px', borderRadius: 10, fontFamily: fontSans, fontSize: 13, fontWeight: 600, cursor: !Number(txGoalAmount) ? 'default' : 'pointer' }}>
+                              {t.goals.apply}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
 
