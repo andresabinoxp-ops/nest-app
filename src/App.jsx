@@ -123,6 +123,13 @@ const copy = {
       checkInCta: 'Start check-in',
       lastChecked: 'Last checked',
       months: (n) => `${n} ${n === 1 ? 'month' : 'months'} in a row`,
+      streakBanner: {
+        sub3: 'Habit forming. Keep it up.',
+        sub6: 'Six months strong.',
+        sub12: 'A full year of monthly check-ins.',
+        subN: 'Strong, steady, and stacking up.',
+      },
+      pastView: 'Past view',
       history: 'History',
       viewMonth: 'View',
       noHistory: 'No saved months yet. Save your first plan on Allocate.',
@@ -435,6 +442,13 @@ const copy = {
       checkInCta: 'Começar check-in',
       lastChecked: 'Última revisão',
       months: (n) => `${n} ${n === 1 ? 'mês' : 'meses'} seguidos`,
+      streakBanner: {
+        sub3: 'Hábito se formando. Continue.',
+        sub6: 'Seis meses firme.',
+        sub12: 'Um ano inteiro de check-ins.',
+        subN: 'Forte, constante e acumulando.',
+      },
+      pastView: 'Vista do passado',
       history: 'Histórico',
       viewMonth: 'Ver',
       noHistory: 'Nenhum mês salvo ainda. Salve seu primeiro plano em Alocar.',
@@ -1461,6 +1475,14 @@ export default function FinanceApp() {
     return snapshots.filter(s => s.monthKey !== currentKey).slice(-1)[0] || null;
   }, [snapshots]);
 
+  // Wealth trajectory across the last 6 saved months + current point.
+  const wealthSparkline = useMemo(() => {
+    if (snapshots.length < 1) return null;
+    const recent = snapshots.slice(-6);
+    const past = recent.map(s => Number(s.buckets?.reduce((sum, b) => sum + (Number(b.current) || 0), 0)) || 0);
+    return [...past, totalWealth];
+  }, [snapshots, totalWealth]);
+
   const monthlyDelta = useMemo(() => {
     if (!lastSnapshot) return null;
     const normPillar = (p) => p === 'wealth' ? 'save' : p === 'wants' ? 'spend' : p === 'needs' ? 'bills' : p;
@@ -1647,11 +1669,18 @@ export default function FinanceApp() {
       : [...snapshots, newSnapshot];
     setSnapshots(newSnapshots);
 
-    // Streak
+    // Streak — counts CONSECUTIVE MONTHS, not check-in events. Multiple
+    // saves in the same month don't bump the counter; a one-month gap
+    // resets to 1.
     const prev = lastCheckIn ? new Date(lastCheckIn) : null;
     if (prev) {
-      const daysSince = (now - prev) / (1000 * 60 * 60 * 24);
-      setCheckInStreak(daysSince <= 45 ? checkInStreak + 1 : 1);
+      const prevKey = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+      if (prevKey === monthKey) {
+        // same month, no change
+      } else {
+        const monthsApart = (now.getFullYear() - prev.getFullYear()) * 12 + (now.getMonth() - prev.getMonth());
+        setCheckInStreak(monthsApart === 1 ? checkInStreak + 1 : 1);
+      }
     } else {
       setCheckInStreak(1);
     }
@@ -2288,9 +2317,32 @@ export default function FinanceApp() {
               <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4 }}>
                 ● {homeGreeting.greeting}{userName ? `, ${userName}` : ''}
               </div>
-              <h1 style={s.h1}>{monthName} <span style={{ color: C.inkMuted, fontWeight: 400 }}>{year}</span></h1>
-              {homeGreeting.monthPrompt && (
-                <div style={{ fontSize: 13, color: C.inkSoft, marginTop: -6 }}>{homeGreeting.monthPrompt}</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <button
+                  onClick={goBackInHistory}
+                  disabled={!canGoBack}
+                  style={{ background: 'transparent', border: 'none', color: canGoBack ? C.inkSoft : C.lineSoft, padding: 6, cursor: canGoBack ? 'pointer' : 'default', display: 'flex', alignItems: 'center' }}
+                  aria-label="Previous month"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <h1 style={{ ...s.h1, margin: 0, textAlign: 'center', flex: 1 }}>
+                  {activeView.label.split(' ')[0]} <span style={{ color: C.inkMuted, fontWeight: 400 }}>{activeView.label.split(' ')[1]}</span>
+                </h1>
+                <button
+                  onClick={goForwardInHistory}
+                  disabled={!canGoForward}
+                  style={{ background: 'transparent', border: 'none', color: canGoForward ? C.inkSoft : C.lineSoft, padding: 6, cursor: canGoForward ? 'pointer' : 'default', display: 'flex', alignItems: 'center' }}
+                  aria-label="Next month"
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+              {!activeView.isCurrent && (
+                <div style={{ fontSize: 11, color: C.accent, fontWeight: 600, textAlign: 'center', marginTop: 2 }}>{t.home.pastView}</div>
+              )}
+              {activeView.isCurrent && homeGreeting.monthPrompt && (
+                <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 4, textAlign: 'center' }}>{homeGreeting.monthPrompt}</div>
               )}
             </div>
 
@@ -2302,20 +2354,22 @@ export default function FinanceApp() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div>
                   <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 4 }}>{t.home.income}</div>
-                  <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.02em' }}>{fmt(salary, t)}</div>
+                  <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.02em' }}>{fmt(activeView.salary, t)}</div>
                 </div>
-                <button style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: C.surface, padding: '6px 12px', borderRadius: 999, fontSize: 11, fontWeight: 500, cursor: 'pointer' }} onClick={() => setTab('allocate')}>
-                  <Pencil size={10} style={{ marginRight: 4, verticalAlign: -1 }} /> {t.common.edit}
-                </button>
+                {activeView.isCurrent && (
+                  <button style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: C.surface, padding: '6px 12px', borderRadius: 999, fontSize: 11, fontWeight: 500, cursor: 'pointer' }} onClick={() => setTab('allocate')}>
+                    <Pencil size={10} style={{ marginRight: 4, verticalAlign: -1 }} /> {t.common.edit}
+                  </button>
+                )}
               </div>
               <div style={{ height: 6, background: 'rgba(255,255,255,0.25)', borderRadius: 3, overflow: 'hidden', marginTop: 12 }}>
-                <div style={{ height: '100%', width: `${Math.min(100, allocPct)}%`, background: C.surface, borderRadius: 3 }} />
+                <div style={{ height: '100%', width: `${Math.min(100, activeAllocPct)}%`, background: C.surface, borderRadius: 3 }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, fontSize: 12 }}>
-                <span style={{ opacity: 0.85 }}>{t.home.allocated} <strong>{fmt(allocated, t)}</strong></span>
-                <span style={{ fontWeight: 600 }}>{isOver ? `${t.home.over} ${fmt(-unassigned, t)}` : `${t.home.free} ${fmt(unassigned, t)}`}</span>
+                <span style={{ opacity: 0.85 }}>{t.home.allocated} <strong>{fmt(activeView.allocated, t)}</strong></span>
+                <span style={{ fontWeight: 600 }}>{activeIsOver ? `${t.home.over} ${fmt(-activeUnassigned, t)}` : `${t.home.free} ${fmt(activeUnassigned, t)}`}</span>
               </div>
-              {monthlyDelta && (monthlyDelta.saveDelta !== 0 || monthlyDelta.spendDelta !== 0) && (
+              {activeView.isCurrent && monthlyDelta && (monthlyDelta.saveDelta !== 0 || monthlyDelta.spendDelta !== 0) && (
                 <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.18)', fontSize: 11, opacity: 0.9, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                   {monthlyDelta.saveDelta !== 0 && (
                     <span>
@@ -2332,8 +2386,27 @@ export default function FinanceApp() {
               )}
             </div>
 
+            {/* Streak celebration */}
+            {activeView.isCurrent && checkInStreak >= 3 && (() => {
+              const sub = checkInStreak >= 12 ? t.home.streakBanner.sub12
+                : checkInStreak >= 6 ? t.home.streakBanner.sub6
+                : checkInStreak === 3 ? t.home.streakBanner.sub3
+                : t.home.streakBanner.subN;
+              return (
+                <div style={{ ...s.card, background: `linear-gradient(135deg, ${C.accent}, ${C.accentDeep})`, color: C.surface, border: 'none', display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Sparkles size={20} color={C.surface} strokeWidth={2} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 700 }}>{t.home.months(checkInStreak)}</div>
+                    <div style={{ fontSize: 12, opacity: 0.9, marginTop: 2 }}>{sub}</div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Check-in prompt */}
-            {needsCheckIn && (
+            {activeView.isCurrent && needsCheckIn && (
               <div style={{ ...s.card, background: C.accentSoft, border: `1px solid ${C.accent}30`, display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ width: 44, height: 44, borderRadius: 14, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Sparkles size={20} color={C.surface} strokeWidth={2} />
@@ -2357,13 +2430,30 @@ export default function FinanceApp() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div style={s.metric}>
                   <div style={s.metricLabel}>{t.home.today}</div>
-                  <div style={{ ...s.metricValue, color: C.ink }}>{fmtShort(totalWealth, t)}</div>
+                  <div style={{ ...s.metricValue, color: C.ink }}>{fmtShort(activeView.totalWealth, t)}</div>
                 </div>
                 <div style={s.metric}>
                   <div style={s.metricLabel}>{t.home.in10}</div>
                   <div style={{ ...s.metricValue, color: C.accent }}>{fmtShort(in10y, t)}</div>
                 </div>
               </div>
+              {wealthSparkline && wealthSparkline.length >= 2 && (() => {
+                const min = Math.min(...wealthSparkline);
+                const max = Math.max(...wealthSparkline);
+                const range = max - min || 1;
+                const w = 100, h = 28;
+                const pts = wealthSparkline.map((v, i) => {
+                  const x = (i / (wealthSparkline.length - 1)) * w;
+                  const y = h - ((v - min) / range) * h;
+                  return `${x.toFixed(2)},${y.toFixed(2)}`;
+                }).join(' ');
+                const lastUp = wealthSparkline[wealthSparkline.length - 1] >= wealthSparkline[wealthSparkline.length - 2];
+                return (
+                  <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height: 28, marginTop: 12 }}>
+                    <polyline points={pts} fill="none" stroke={lastUp ? C.accent : C.red} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
+                  </svg>
+                );
+              })()}
             </div>
 
             {/* Goals snapshot */}
