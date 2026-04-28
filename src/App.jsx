@@ -2078,25 +2078,49 @@ export default function FinanceApp() {
   };
 
   const applySmartSplit = (split) => {
-    // Map split keys to item names, icons, pillars, and benchmark keys
-    const nameMap = lang === 'en'
-      ? { housing: 'Housing', utilities: 'Utilities', groceries: 'Groceries', transport: 'Transport', lifestyle: 'Lifestyle', emergency: 'Emergency fund', savings: 'Savings', investments: 'Investments', debt: 'Debt payoff' }
-      : { housing: 'Moradia', utilities: 'Contas', groceries: 'Mercado', transport: 'Transporte', lifestyle: 'Lazer', emergency: 'Reserva', savings: 'Poupança', investments: 'Investimentos', debt: 'Quitar dívidas' };
-    const iconMap = { housing: 'house', utilities: 'line', groceries: 'bag', transport: 'car', lifestyle: 'gem', emergency: 'shield', savings: 'piggy', investments: 'line', debt: 'card' };
-    const pillarMap = BENCHMARK_TO_PILLAR;
-    const benchmarkMap = { housing: 'housing', utilities: 'utilities', groceries: 'groceries', transport: 'transport', lifestyle: 'lifestyle', emergency: 'emergency', savings: 'savings', investments: 'investments', debt: 'debt' };
+    // Aggregate the recommended split into pillar totals.
+    const pillarTargets = { save: 0, bills: 0, spend: 0, debt: 0 };
+    Object.entries(split).forEach(([k, amt]) => {
+      const p = BENCHMARK_TO_PILLAR[k];
+      if (p) pillarTargets[p] += Number(amt) || 0;
+    });
 
-    const newItems = Object.entries(split)
-      .filter(([_, amt]) => amt > 0)
-      .map(([k, amt]) => ({
-        id: Math.random().toString(36),
-        name: nameMap[k],
-        icon: iconMap[k],
-        pillar: pillarMap[k],
-        benchmarkKey: benchmarkMap[k],
-        amount: amt,
-      }));
-    setItems(newItems);
+    // For each pillar, distribute its target across the user's existing
+    // items: proportional to current amounts when any are non-zero, evenly
+    // when all are zero. Items in pillars with no target (debt without debt
+    // items, etc.) are left at zero. If a pillar has no items at all, the
+    // total goes onto a synthetic placeholder so the user still sees it.
+    const nameMap = lang === 'en'
+      ? { save: 'Savings', bills: 'Bills', spend: 'Spending', debt: 'Debt payoff' }
+      : { save: 'Poupança', bills: 'Contas', spend: 'Gastos', debt: 'Quitar dívidas' };
+    const iconMap = { save: 'piggy', bills: 'house', spend: 'bag', debt: 'card' };
+
+    const grouped = { save: [], bills: [], spend: [], debt: [] };
+    items.forEach(it => { if (grouped[it.pillar]) grouped[it.pillar].push(it); });
+
+    const updated = items.map(it => {
+      const target = pillarTargets[it.pillar];
+      const peers = grouped[it.pillar];
+      if (!target || peers.length === 0) return { ...it, amount: 0 };
+      const peerTotal = peers.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      let share;
+      if (peerTotal > 0) {
+        share = ((Number(it.amount) || 0) / peerTotal) * target;
+      } else {
+        share = target / peers.length;
+      }
+      return { ...it, amount: Math.round(share) };
+    });
+
+    // Add placeholders for any pillar that has a target but no items.
+    const extras = [];
+    Object.entries(pillarTargets).forEach(([p, t]) => {
+      if (t > 0 && grouped[p].length === 0) {
+        extras.push({ id: Math.random().toString(36), name: nameMap[p], icon: iconMap[p], pillar: p, benchmarkKey: null, amount: Math.round(t) });
+      }
+    });
+
+    setItems([...updated, ...extras]);
     setTargetSplitPct(computePillarPctFromSplit(split));
     setSmartStep(null);
     setSmartAnswers({});
