@@ -240,8 +240,7 @@ const copy = {
       },
       smartAction: {
         spendHighTitle: 'Spend is above typical',
-        spendHighSub: (gap) => `${gap}pp over. Shift some to Save and hit goals faster.`,
-        spendHighCta: 'Try the swap',
+        spendInfoSub: (gap, amt) => `${gap}pp over. Cutting ~${amt} to typical would unlock:`,
         billsHighTitle: 'Bills are above typical',
         billsHighSub: (gap) => `${gap}pp over. Real-world levers — not a number trick.`,
         billsHighCta: 'See levers',
@@ -250,17 +249,8 @@ const copy = {
         saveLowCta: 'How',
       },
       swap: {
-        title: 'Shift Spend → Save',
-        sub: 'Trim Spend by this much and add it to Save. This commits you to spending less in real life — pick where.',
-        amount: 'Amount to shift',
         consequenceGoal: (goal, months) => `${goal} ${months}mo sooner`,
         consequenceNewEta: (goal, months) => `${goal} in ~${months}mo`,
-        consequenceWealth: (amt) => `+${amt}/yr to your wealth`,
-        consequenceLabel: '→',
-        apply: 'Apply shift',
-        cancel: 'Cancel',
-        nothingSpend: 'No Spend items to trim. Add a Spend item first.',
-        nothingSave: 'No Save items to bump. Add a Save item first.',
       },
       billsTips: {
         title: 'Trim your Bills',
@@ -731,8 +721,7 @@ const copy = {
       },
       smartAction: {
         spendHighTitle: 'Gasto está acima do típico',
-        spendHighSub: (gap) => `${gap}pp a mais. Mande pra Guardar e bata metas mais rápido.`,
-        spendHighCta: 'Fazer a troca',
+        spendInfoSub: (gap, amt) => `${gap}pp a mais. Cortar ~${amt} pro típico libera:`,
         billsHighTitle: 'Contas estão acima do típico',
         billsHighSub: (gap) => `${gap}pp a mais. Mexa no real — não só no número.`,
         billsHighCta: 'Ver alavancas',
@@ -741,17 +730,8 @@ const copy = {
         saveLowCta: 'Como',
       },
       swap: {
-        title: 'Trocar Gasto → Guardar',
-        sub: 'Corte o Gasto neste valor e mande pra Guardar. Isso te compromete a gastar menos de verdade — escolha onde cortar.',
-        amount: 'Quanto trocar',
         consequenceGoal: (goal, months) => `${goal} ${months} meses antes`,
         consequenceNewEta: (goal, months) => `${goal} em ~${months} meses`,
-        consequenceWealth: (amt) => `+${amt}/ano no seu patrimônio`,
-        consequenceLabel: '→',
-        apply: 'Aplicar troca',
-        cancel: 'Cancelar',
-        nothingSpend: 'Sem itens de Gasto pra cortar. Adicione um item de Gasto primeiro.',
-        nothingSave: 'Sem itens de Guardar pra reforçar. Adicione um item de Guardar primeiro.',
       },
       billsTips: {
         title: 'Reduzir suas Contas',
@@ -1718,8 +1698,6 @@ export default function FinanceApp() {
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [saveToast, setSaveToast] = useState(null);
   const [reviewOpen, setReviewOpen] = useState(false);
-  const [swapOpen, setSwapOpen] = useState(false);
-  const [swapAmount, setSwapAmount] = useState(0);
   const [billsTipsOpen, setBillsTipsOpen] = useState(false);
   const [saveTipsOpen, setSaveTipsOpen] = useState(false);
   const [linkSheetItemId, setLinkSheetItemId] = useState(null);
@@ -2167,31 +2145,6 @@ export default function FinanceApp() {
     setSurplusRedirectOpen(false);
   };
 
-  // Move money from Spend to Save by trimming each Spend item proportionally
-  // and adding to each Save item proportionally. Honest: the user is committing
-  // to spending less in real life, so the plan should reflect that immediately.
-  const applySpendToSaveSwap = (amount) => {
-    const amt = Math.max(0, Math.round(Number(amount) || 0));
-    if (amt <= 0) return;
-    const spendItems = items.filter(i => i.pillar === 'spend' && Number(i.amount) > 0);
-    const saveItems = items.filter(i => i.pillar === 'save');
-    if (spendItems.length === 0 || saveItems.length === 0) return;
-    const spendTotal = spendItems.reduce((s, i) => s + Number(i.amount), 0);
-    const trim = Math.min(amt, spendTotal);
-    if (trim <= 0) return;
-    const spendShares = new Map(spendItems.map(i => [i.id, (Number(i.amount) / spendTotal) * trim]));
-    const saveTotal = saveItems.reduce((s, i) => s + Number(i.amount || 0), 0);
-    const saveShares = new Map(saveItems.map(i => {
-      const weight = saveTotal > 0 ? (Number(i.amount || 0) / saveTotal) : (1 / saveItems.length);
-      return [i.id, weight * trim];
-    }));
-    setItems(items.map(i => {
-      if (spendShares.has(i.id)) return { ...i, amount: Math.max(0, Math.round(Number(i.amount) - spendShares.get(i.id))) };
-      if (saveShares.has(i.id)) return { ...i, amount: Math.round(Number(i.amount || 0) + saveShares.get(i.id)) };
-      return i;
-    }));
-    setSwapOpen(false);
-  };
   const handleSavePlan = () => {
     if (unassigned > 0) {
       setSurplusRedirectOpen(true);
@@ -3290,17 +3243,51 @@ export default function FinanceApp() {
               const hasSaveItems = items.some(i => i.pillar === 'save');
               let card = null;
               if (spendGap >= 5 && hasSpendItems && hasSaveItems) {
+                // Insight-only: no button, no auto-action. The user adjusts items
+                // manually below. Consequence is computed honestly against the
+                // share that actually reaches a linked goal.
                 const proposed = Math.max(0, Math.round((pct('spend') - target('spend')) * salary / 100));
+                const saveItems = items.filter(i => i.pillar === 'save');
+                const saveTotal = saveItems.reduce((s, i) => s + Number(i.amount || 0), 0);
+                const candidates = goals.filter(g =>
+                  Number(g.target) > 0 &&
+                  Number(g.current) < Number(g.target) &&
+                  saveItems.some(i => i.goalId === g.id)
+                );
+                const goal = candidates.find(g => g.deadline) || candidates[0];
+                let consequenceText = `+${fmt(proposed * 12, t)} ${lang === 'pt' ? '/ano' : '/yr'}`;
+                if (goal && proposed > 0) {
+                  const linked = saveItems.find(i => i.goalId === goal.id);
+                  const weight = saveTotal > 0
+                    ? Number(linked.amount || 0) / saveTotal
+                    : (saveItems.length > 0 ? 1 / saveItems.length : 0);
+                  const goalShare = weight * proposed;
+                  if (goalShare > 0) {
+                    const remaining = Math.max(0, Number(goal.target) - Number(goal.current));
+                    const currentMonthly = Number(goal.monthly) || 0;
+                    if (currentMonthly > 0) {
+                      const newMonthly = currentMonthly + goalShare;
+                      const oldMonths = Math.ceil(remaining / currentMonthly);
+                      const newMonths = Math.ceil(remaining / newMonthly);
+                      const saved = oldMonths - newMonths;
+                      if (saved >= 1) consequenceText = t.allocate.swap.consequenceGoal(goal.name, saved);
+                    } else {
+                      const newMonths = Math.ceil(remaining / goalShare);
+                      consequenceText = t.allocate.swap.consequenceNewEta(goal.name, newMonths);
+                    }
+                  }
+                }
                 card = {
+                  kind: 'info',
                   title: t.allocate.smartAction.spendHighTitle,
-                  sub: t.allocate.smartAction.spendHighSub(spendGap),
-                  cta: t.allocate.smartAction.spendHighCta,
+                  sub: t.allocate.smartAction.spendInfoSub(spendGap, fmt(proposed, t)),
+                  consequence: consequenceText,
                   color: C.accent,
                   icon: <ArrowDownUp size={14} color={C.accent} strokeWidth={2.5} />,
-                  onTap: () => { setSwapAmount(proposed); setSwapOpen(true); },
                 };
               } else if (billsGap >= 5) {
                 card = {
+                  kind: 'action',
                   title: t.allocate.smartAction.billsHighTitle,
                   sub: t.allocate.smartAction.billsHighSub(billsGap),
                   cta: t.allocate.smartAction.billsHighCta,
@@ -3310,6 +3297,7 @@ export default function FinanceApp() {
                 };
               } else if (saveGap >= 5) {
                 card = {
+                  kind: 'action',
                   title: t.allocate.smartAction.saveLowTitle,
                   sub: t.allocate.smartAction.saveLowSub(saveGap),
                   cta: t.allocate.smartAction.saveLowCta,
@@ -3319,6 +3307,22 @@ export default function FinanceApp() {
                 };
               }
               if (!card) return null;
+              if (card.kind === 'info') {
+                return (
+                  <div style={{ marginBottom: 12, padding: '12px 14px', background: `${card.color}10`, border: `1px solid ${card.color}40`, borderRadius: 14, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {card.icon}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>{card.title}</div>
+                      <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2, lineHeight: 1.4 }}>{card.sub}</div>
+                      <div style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, background: C.surface, border: `1px solid ${card.color}40`, color: card.color, fontSize: 11, fontWeight: 700 }}>
+                        <TrendingUp size={11} strokeWidth={2.5} /> {card.consequence}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
               return (
                 <div style={{ marginBottom: 12, padding: '12px 14px', background: `${card.color}10`, border: `1px solid ${card.color}40`, borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ width: 28, height: 28, borderRadius: 8, background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -4894,103 +4898,6 @@ export default function FinanceApp() {
                   {t.allocate.link.close}
                 </button>
               </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Spend → Save swap sheet */}
-      {swapOpen && (() => {
-        const sw = t.allocate.swap;
-        const spendItems = items.filter(i => i.pillar === 'spend' && Number(i.amount) > 0);
-        const saveItems = items.filter(i => i.pillar === 'save');
-        const spendTotal = spendItems.reduce((s, i) => s + Number(i.amount), 0);
-        const max = Math.floor(spendTotal);
-        const amt = Math.max(0, Math.min(max, Number(swapAmount) || 0));
-        // Consequence: only name a goal if it's actually linked to a Save item
-        // that will receive a share of this swap. Otherwise the headline lies
-        // (the swap distributes proportionally across all Save items, so an
-        // unlinked goal doesn't actually advance at check-in). Compute the
-        // months claim against the goal's real share, not the full swap.
-        const saveTotalCurrent = saveItems.reduce((s, i) => s + Number(i.amount || 0), 0);
-        const linkedShareForGoal = (gId) => {
-          const linked = saveItems.find(i => i.goalId === gId);
-          if (!linked) return 0;
-          const weight = saveTotalCurrent > 0
-            ? (Number(linked.amount || 0) / saveTotalCurrent)
-            : (saveItems.length > 0 ? 1 / saveItems.length : 0);
-          return weight * amt;
-        };
-        const candidates = goals.filter(g =>
-          Number(g.target) > 0 &&
-          Number(g.current) < Number(g.target) &&
-          saveItems.some(i => i.goalId === g.id)
-        );
-        const goal = candidates.find(g => g.deadline) || candidates[0];
-        let consequenceText = sw.consequenceWealth(fmt(amt * 12, t));
-        if (goal && amt > 0) {
-          const goalShare = linkedShareForGoal(goal.id);
-          if (goalShare > 0) {
-            const remaining = Math.max(0, Number(goal.target) - Number(goal.current));
-            const currentMonthly = Number(goal.monthly) || 0;
-            if (currentMonthly > 0) {
-              const newMonthly = currentMonthly + goalShare;
-              const oldMonths = Math.ceil(remaining / currentMonthly);
-              const newMonths = Math.ceil(remaining / newMonthly);
-              const saved = oldMonths - newMonths;
-              if (saved >= 1) consequenceText = sw.consequenceGoal(goal.name, saved);
-            } else {
-              const newMonths = Math.ceil(remaining / goalShare);
-              consequenceText = sw.consequenceNewEta(goal.name, newMonths);
-            }
-          }
-        }
-        return (
-          <div onClick={() => setSwapOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: '88vh', background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <div style={{ width: 36, height: 4, background: C.line, borderRadius: 2, margin: '0 auto 14px' }} />
-              <div style={{ fontSize: 17, fontWeight: 700, color: C.ink, marginBottom: 6 }}>{sw.title}</div>
-              <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 18, lineHeight: 1.5 }}>{sw.sub}</div>
-
-              {(spendItems.length === 0) && (
-                <div style={{ padding: 14, background: C.surfaceAlt, borderRadius: 12, fontSize: 13, color: C.inkSoft, marginBottom: 16 }}>{sw.nothingSpend}</div>
-              )}
-              {(spendItems.length > 0 && saveItems.length === 0) && (
-                <div style={{ padding: 14, background: C.surfaceAlt, borderRadius: 12, fontSize: 13, color: C.inkSoft, marginBottom: 16 }}>{sw.nothingSave}</div>
-              )}
-
-              {(spendItems.length > 0 && saveItems.length > 0) && (
-                <>
-                  <div style={{ fontSize: 10, color: C.inkMuted, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>{sw.amount}</div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>
-                    <span style={{ fontSize: 20, color: C.inkSoft }}>{t.currencySymbol}</span>
-                    <span style={{ fontSize: 32, fontWeight: 700, color: C.ink, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmtNumber(amt, t)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={max}
-                    step={Math.max(1, Math.round(max / 50))}
-                    value={amt}
-                    onChange={(e) => setSwapAmount(Number(e.target.value))}
-                    style={{ width: '100%', accentColor: C.accent, marginBottom: 16 }}
-                  />
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: `${C.accent}10`, border: `1px solid ${C.accent}40`, borderRadius: 12, marginBottom: 18 }}>
-                    <TrendingUp size={14} color={C.accent} strokeWidth={2.5} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: C.accent }}>{sw.consequenceLabel} {consequenceText}</span>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setSwapOpen(false)} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: `1px solid ${C.line}`, background: C.surface, color: C.inkSoft, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 600 }}>
-                      {sw.cancel}
-                    </button>
-                    <button onClick={() => applySpendToSaveSwap(amt)} disabled={amt <= 0} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: 'none', background: amt > 0 ? C.accent : C.line, color: amt > 0 ? C.surface : C.inkMuted, cursor: amt > 0 ? 'pointer' : 'default', fontFamily: fontSans, fontSize: 13, fontWeight: 700 }}>
-                      {sw.apply}
-                    </button>
-                  </div>
-                </>
-              )}
             </div>
           </div>
         );
