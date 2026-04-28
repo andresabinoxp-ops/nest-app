@@ -3749,16 +3749,21 @@ export default function FinanceApp() {
                     const current = (pillarTotals[key] || 0) / allocated;
                     const diffPp = Math.round((current - target) * 100);
                     const onTrack = Math.abs(diffPp) < 5;
+                    // Direction of preference per pillar: more is better for Save,
+                    // less is better for Bills/Spend/Debt. Healthy means on-track
+                    // or moving in the good direction.
+                    const aboveIsGood = key === 'save';
+                    const isHealthy = onTrack || (aboveIsGood ? diffPp > 0 : diffPp < 0);
+                    const healthColor = isHealthy ? C.accent : C.red;
                     const status = onTrack ? t.allocate.benchmarkCard.on : diffPp > 0 ? t.allocate.benchmarkCard.above : t.allocate.benchmarkCard.below;
-                    const statusColor = onTrack ? C.accent : diffPp > 0 ? (key === 'save' ? C.accent : C.inkSoft) : (key === 'save' ? C.inkSoft : C.inkSoft);
                     return (
                       <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{ flexShrink: 0, width: 56, fontSize: 12, fontWeight: 600, color: C.ink }}>{t.allocate.pillarLabels[key]}</div>
                         <div style={{ flex: 1, position: 'relative', height: 8, background: C.line, borderRadius: 4, overflow: 'hidden' }}>
-                          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(100, Math.round(current * 100))}%`, background: onTrack ? C.accent : C.inkMuted, transition: 'width 0.3s' }} />
+                          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(100, Math.round(current * 100))}%`, background: healthColor, transition: 'width 0.3s' }} />
                           <div style={{ position: 'absolute', left: `${Math.round(target * 100)}%`, top: -2, bottom: -2, width: 2, background: C.ink, opacity: 0.4 }} />
                         </div>
-                        <div style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: statusColor, minWidth: 56, textAlign: 'right', ...s.num }}>{Math.round(current * 100)}%</div>
+                        <div style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: healthColor, minWidth: 56, textAlign: 'right', ...s.num }}>{Math.round(current * 100)}%</div>
                         <div style={{ flexShrink: 0, fontSize: 10, color: C.inkMuted, minWidth: 64, textAlign: 'right' }}>{status}</div>
                       </div>
                     );
