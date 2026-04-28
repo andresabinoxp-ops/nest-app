@@ -2944,8 +2944,8 @@ export default function FinanceApp() {
       <div style={s.topbar}>
         <div style={s.brandWrap}>
           <div style={s.brandMark} aria-label={t.brand}>
-            <svg width="14" height="14" viewBox="0 0 512 512" aria-hidden="true">
-              <path d="M150 360V152h44l124 138V152l22-52 22 52v208h-44L194 222v138z" fill="#FFFFFF"/>
+            <svg width="16" height="16" viewBox="0 0 512 512" aria-hidden="true">
+              <path d="M150 360V152h44l124 138V200H290L340 80l50 120H362v160h-44L194 222v138z" fill="#FFFFFF"/>
             </svg>
           </div>
           <div style={s.brand}>{t.brand}</div>
