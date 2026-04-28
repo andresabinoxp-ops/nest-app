@@ -276,6 +276,16 @@ const copy = {
           { title: 'One-account rule', body: 'Keep Save in a separate account you don\'t see day-to-day.' },
         ],
       },
+      link: {
+        chip: 'Link to goal',
+        chipLinked: (name) => `→ ${name}`,
+        sheetTitle: 'Link this item to a goal',
+        sheetSub: 'When you check in, this amount adds to the goal automatically.',
+        empty: 'No matching goals yet. Add one in the Goals tab first.',
+        unlink: 'Unlink',
+        close: 'Close',
+      },
+      fundedBy: 'Funded by Allocate',
       smartCard: {
         title: 'Not sure how to split?',
         sub: '3 quick questions. Two suggested plans.',
@@ -756,6 +766,16 @@ const copy = {
           { title: 'Conta separada', body: 'Mantenha Guardar numa conta que você não vê no dia a dia.' },
         ],
       },
+      link: {
+        chip: 'Vincular a meta',
+        chipLinked: (name) => `→ ${name}`,
+        sheetTitle: 'Vincular este item a uma meta',
+        sheetSub: 'Quando você fizer o check-in, esse valor entra na meta automaticamente.',
+        empty: 'Nenhuma meta compatível ainda. Adicione uma na aba Metas primeiro.',
+        unlink: 'Desvincular',
+        close: 'Fechar',
+      },
+      fundedBy: 'Vindo da Aloc.',
       smartCard: {
         title: 'Não sabe como dividir?',
         sub: '3 perguntas rápidas. Dois planos sugeridos.',
@@ -1700,6 +1720,7 @@ export default function FinanceApp() {
   const [swapAmount, setSwapAmount] = useState(0);
   const [billsTipsOpen, setBillsTipsOpen] = useState(false);
   const [saveTipsOpen, setSaveTipsOpen] = useState(false);
+  const [linkSheetItemId, setLinkSheetItemId] = useState(null);
 
   // UI state — don't persist editing flags etc.
   const [editingItemId, setEditingItemId] = useState(null);
@@ -2038,8 +2059,34 @@ export default function FinanceApp() {
       ...i,
       id: Math.random().toString(36),
       amount: 0,
+      goalId: null,
     }));
-    setItems(defaultItems);
+
+    // Seed goals from saveFor picks. Each pick also gets a linked Save item so
+    // Allocate ↔ Goals are connected from day one.
+    const savForOptions = copy[langKey].onboarding.saveFor.options;
+    const selected = savForOptions.filter(o => saveForPicks.includes(o.v));
+    const defaultTargets = { emergency: 10000, vacation: 5000, car: 15000, home: 50000, wedding: 20000, retirement: 100000, other: 5000 };
+    const seededGoals = selected.map(o => ({
+      id: Math.random().toString(36),
+      name: o.l,
+      icon: o.icon,
+      type: 'savings',
+      target: defaultTargets[o.v] || 5000,
+      current: 0,
+      monthly: 0,
+    }));
+    // Attach a linked Save item for each goal — appears in Allocate, ready to fund.
+    const linkedItems = seededGoals.map(g => ({
+      id: Math.random().toString(36),
+      name: g.name,
+      pillar: 'save',
+      amount: 0,
+      benchmarkKey: 'savings',
+      goalId: g.id,
+    }));
+    setItems([...defaultItems, ...linkedItems]);
+    setGoals(seededGoals);
 
     // Seed buckets from investor profile
     const profileBuckets = PROFILE_BUCKETS[investorProfile || 'balanced'][country] || PROFILE_BUCKETS.balanced.uk;
@@ -2050,20 +2097,6 @@ export default function FinanceApp() {
       monthly: 0,
       dividend: 0,
       lastUpdated: Date.now(),
-    })));
-
-    // Seed goals from saveFor picks
-    const savForOptions = copy[langKey].onboarding.saveFor.options;
-    const selected = savForOptions.filter(o => saveForPicks.includes(o.v));
-    const defaultTargets = { emergency: 10000, vacation: 5000, car: 15000, home: 50000, wedding: 20000, retirement: 100000, other: 5000 };
-    setGoals(selected.map(o => ({
-      id: Math.random().toString(36),
-      name: o.l,
-      icon: o.icon,
-      type: 'savings',
-      target: defaultTargets[o.v] || 5000,
-      current: 0,
-      monthly: 0,
     })));
 
     setPhase('app');
@@ -2121,19 +2154,37 @@ export default function FinanceApp() {
   const doCheckIn = () => {
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const existingIdx = snapshots.findIndex(s => s.monthKey === monthKey);
+    const isFirstCheckInThisMonth = existingIdx === -1;
+
+    // Credit linked goals on the first check-in of this month. Subsequent
+    // saves in the same month don't double-count. Save items add to the
+    // goal balance; Debt items also add (current = amount paid toward debt).
+    let updatedGoals = goals;
+    if (isFirstCheckInThisMonth) {
+      updatedGoals = goals.map(g => {
+        const linkedItem = items.find(i => i.goalId === g.id);
+        if (!linkedItem) return g;
+        const credit = Math.max(0, Number(linkedItem.amount) || 0);
+        if (credit <= 0) return g;
+        const newCurrent = (Number(g.current) || 0) + credit;
+        const entry = { ts: now.getTime(), delta: credit, balanceAfter: newCurrent, source: 'allocate' };
+        return { ...g, current: newCurrent, history: [...(g.history || []), entry] };
+      });
+      setGoals(updatedGoals);
+    }
+
     const newSnapshot = {
       monthKey,
       salary,
       items: items.map(i => ({ ...i })),
       buckets: buckets.map(b => ({ ...b })),
-      goals: goals.map(g => ({ ...g })),
+      goals: updatedGoals.map(g => ({ ...g })),
       date: now.toISOString(),
     };
-    // Replace if same month exists, else append
-    const existingIdx = snapshots.findIndex(s => s.monthKey === monthKey);
-    const newSnapshots = existingIdx >= 0
-      ? snapshots.map((s, i) => i === existingIdx ? newSnapshot : s)
-      : [...snapshots, newSnapshot];
+    const newSnapshots = isFirstCheckInThisMonth
+      ? [...snapshots, newSnapshot]
+      : snapshots.map((s, i) => i === existingIdx ? newSnapshot : s);
     setSnapshots(newSnapshots);
 
     // Streak — counts CONSECUTIVE MONTHS, not check-in events. Multiple
@@ -2598,9 +2649,33 @@ export default function FinanceApp() {
 
   // Handlers
   const updateItem = (id, field, value) => {
-    setItems(items.map(c => c.id === id ? { ...c, [field]: field === 'amount' ? (value === '' ? 0 : Number(value)) : value } : c));
+    const next = field === 'amount' ? (value === '' ? 0 : Number(value)) : value;
+    setItems(items.map(c => c.id === id ? { ...c, [field]: next } : c));
+    // Linked-goal sync: editing the item amount updates the goal's monthly.
+    if (field === 'amount') {
+      const it = items.find(c => c.id === id);
+      if (it && it.goalId) {
+        setGoals(goals.map(g => g.id === it.goalId ? { ...g, monthly: Number(next) || 0 } : g));
+      }
+    }
   };
   const removeItem = (id) => setItems(items.filter(c => c.id !== id));
+  const linkItemToGoal = (itemId, goalId) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    setItems(items.map(i => {
+      // Enforce 1-to-1 by clearing any other item that points at the same goal.
+      if (i.goalId === goalId && i.id !== itemId) return { ...i, goalId: null };
+      if (i.id !== itemId) return i;
+      return { ...i, goalId };
+    }));
+    // Sync the goal's monthly to whatever the item amount is right now.
+    const item = items.find(i => i.id === itemId);
+    if (item) setGoals(goals.map(g => g.id === goalId ? { ...g, monthly: Number(item.amount) || 0 } : g));
+  };
+  const unlinkItem = (itemId) => {
+    setItems(items.map(i => i.id === itemId ? { ...i, goalId: null } : i));
+  };
   const computePillarPctFromSplit = (split) => {
     const totals = { save: 0, bills: 0, spend: 0, debt: 0 };
     let sum = 0;
@@ -2761,7 +2836,13 @@ export default function FinanceApp() {
   const addBucket = () => addBucketOfType('other');
 
   const updateGoal = (id, field, value) => {
-    setGoals(goals.map(g => g.id === id ? { ...g, [field]: ['target', 'current', 'monthly'].includes(field) ? (value === '' ? 0 : Number(value)) : value } : g));
+    const next = ['target', 'current', 'monthly'].includes(field) ? (value === '' ? 0 : Number(value)) : value;
+    setGoals(goals.map(g => g.id === id ? { ...g, [field]: next } : g));
+    // Linked-item sync: editing the goal's monthly updates the linked Allocate item's amount.
+    if (field === 'monthly') {
+      const linked = items.find(i => i.goalId === id);
+      if (linked) setItems(items.map(i => i.id === linked.id ? { ...i, amount: Number(next) || 0 } : i));
+    }
   };
   const removeGoalHistoryEntry = (goalId, idx) => {
     setGoals(goals.map(g => {
@@ -2774,7 +2855,12 @@ export default function FinanceApp() {
     }));
     setConfirmRemoveGoalEntry(null);
   };
-  const removeGoal = (id) => { setGoals(goals.filter(g => g.id !== id)); if (editingGoalId === id) setEditingGoalId(null); if (txGoalId === id) setTxGoalId(null); };
+  const removeGoal = (id) => {
+    setGoals(goals.filter(g => g.id !== id));
+    setItems(items.map(i => i.goalId === id ? { ...i, goalId: null } : i));
+    if (editingGoalId === id) setEditingGoalId(null);
+    if (txGoalId === id) setTxGoalId(null);
+  };
   const addGoal = () => {
     const newGoal = { id: Math.random().toString(36), name: t.goals.new, icon: 'circle', type: 'savings', target: 1000, current: 0, monthly: 0 };
     setGoals([...goals, newGoal]);
@@ -3496,6 +3582,19 @@ export default function FinanceApp() {
                           </div>
                         )}
 
+                        {/* Linked-goal chip — only on Save and Debt items, where linking is honest */}
+                        {(item.pillar === 'save' || item.pillar === 'debt') && (() => {
+                          const linkedGoal = item.goalId ? goals.find(g => g.id === item.goalId) : null;
+                          return (
+                            <div style={{ marginTop: 6, paddingLeft: 36 }}>
+                              <button onClick={() => setLinkSheetItemId(item.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, border: linkedGoal ? `1px solid ${C.accent}40` : `1px dashed ${C.line}`, background: linkedGoal ? `${C.accent}10` : 'transparent', color: linkedGoal ? C.accent : C.inkMuted, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: fontSans }}>
+                                <Target size={10} strokeWidth={2.5} />
+                                {linkedGoal ? t.allocate.link.chipLinked(linkedGoal.name) : t.allocate.link.chip}
+                              </button>
+                            </div>
+                          );
+                        })()}
+
                         {isEditingItem && (
                           <div style={{ paddingLeft: 36, marginTop: 10 }}>
                             <input style={{ ...s.input, padding: '8px 12px', fontSize: 16, marginBottom: 10 }} value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} />
@@ -3808,7 +3907,14 @@ export default function FinanceApp() {
                     {isEditing ? (
                       <input style={{ ...s.input, flex: 1, padding: '8px 12px', fontSize: 16 }} value={g.name} onChange={(e) => updateGoal(g.id, 'name', e.target.value)} />
                     ) : (
-                      <div style={{ flex: 1, fontSize: 16, fontWeight: 600 }}>{g.name}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 16, fontWeight: 600 }}>{g.name}</div>
+                        {items.some(i => i.goalId === g.id) && (
+                          <div style={{ fontSize: 10, color: C.accent, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <Wallet size={9} strokeWidth={2.5} /> {t.allocate.fundedBy}
+                          </div>
+                        )}
+                      </div>
                     )}
                     {isEditing ? (
                       <button style={s.ghostBtn} onClick={() => setEditingGoalId(null)}><Check size={14} /></button>
@@ -4687,6 +4793,59 @@ export default function FinanceApp() {
           <span style={{ fontSize: 12, opacity: 0.7, fontVariantNumeric: 'tabular-nums', marginLeft: 'auto' }}>{saveToast}</span>
         </div>
       )}
+
+      {/* Link picker — pair an Allocate item to a Goal */}
+      {linkSheetItemId && (() => {
+        const item = items.find(i => i.id === linkSheetItemId);
+        if (!item) return null;
+        // Save items match savings goals; Debt items match debt goals.
+        const eligible = goals.filter(g => item.pillar === 'debt' ? g.type === 'debt' : g.type !== 'debt');
+        const linkedGoal = item.goalId ? goals.find(g => g.id === item.goalId) : null;
+        return (
+          <div onClick={() => setLinkSheetItemId(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: '88vh', background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div style={{ width: 36, height: 4, background: C.line, borderRadius: 2, margin: '0 auto 14px' }} />
+              <div style={{ fontSize: 17, fontWeight: 700, color: C.ink, marginBottom: 4 }}>{t.allocate.link.sheetTitle}</div>
+              <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 16, lineHeight: 1.45 }}>{t.allocate.link.sheetSub}</div>
+
+              {eligible.length === 0 && (
+                <div style={{ padding: 14, background: C.surfaceAlt, borderRadius: 12, fontSize: 13, color: C.inkSoft, marginBottom: 16 }}>{t.allocate.link.empty}</div>
+              )}
+
+              {eligible.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                  {eligible.map(g => {
+                    const sel = item.goalId === g.id;
+                    return (
+                      <button key={g.id} onClick={() => { linkItemToGoal(item.id, g.id); setLinkSheetItemId(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, border: `1px solid ${sel ? C.accent : C.line}`, background: sel ? `${C.accent}10` : C.surface, color: C.ink, cursor: 'pointer', fontFamily: fontSans, textAlign: 'left' }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: g.type === 'debt' ? C.redSoft : C.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {renderIcon(g.icon, 14, g.type === 'debt' ? C.red : C.accent, 2)}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{g.name}</div>
+                          <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 2 }}>{fmt(g.current, t)} / {fmt(g.target, t)}</div>
+                        </div>
+                        {sel && <Check size={16} color={C.accent} strokeWidth={3} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                {linkedGoal && (
+                  <button onClick={() => { unlinkItem(item.id); setLinkSheetItemId(null); }} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: `1px solid ${C.line}`, background: C.surface, color: C.red, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 600 }}>
+                    {t.allocate.link.unlink}
+                  </button>
+                )}
+                <button onClick={() => setLinkSheetItemId(null)} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: 'none', background: C.accent, color: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 700 }}>
+                  {t.allocate.link.close}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Spend → Save swap sheet */}
       {swapOpen && (() => {
