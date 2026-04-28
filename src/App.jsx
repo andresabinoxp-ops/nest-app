@@ -273,6 +273,16 @@ const copy = {
         { key: 'car', name: 'New car', icon: 'car', target: 12000, type: 'savings' },
         { key: 'debt', name: 'Pay off debt', icon: 'card', target: 5000, type: 'debt' },
       ],
+      celebrationTitle: 'Goal achieved!',
+      celebrationSub: 'Time to set a new one or keep building.',
+      deadline: 'Deadline',
+      deadlineHint: 'optional · sets a target date',
+      onTrack: 'On track',
+      ahead: (n) => n === 1 ? '1 month ahead' : `${n} months ahead`,
+      behind: (n) => n === 1 ? '1 month behind' : `${n} months behind`,
+      historyTitle: 'Contributions',
+      historyEmpty: 'No contributions yet. Use the + button to log one.',
+      removeEntryQ: 'Remove this entry?',
     },
     wealth: {
       title: 'Wealth',
@@ -621,6 +631,16 @@ const copy = {
         { key: 'car', name: 'Carro novo', icon: 'car', target: 50000, type: 'savings' },
         { key: 'debt', name: 'Quitar dívidas', icon: 'card', target: 10000, type: 'debt' },
       ],
+      celebrationTitle: 'Meta conquistada!',
+      celebrationSub: 'Hora de definir uma nova ou continuar.',
+      deadline: 'Prazo',
+      deadlineHint: 'opcional · define uma data alvo',
+      onTrack: 'No caminho',
+      ahead: (n) => n === 1 ? '1 mês adiantado' : `${n} meses adiantado`,
+      behind: (n) => n === 1 ? '1 mês atrasado' : `${n} meses atrasado`,
+      historyTitle: 'Contribuições',
+      historyEmpty: 'Sem contribuições ainda. Use o botão + pra registrar.',
+      removeEntryQ: 'Remover este registro?',
       new: 'Nova meta',
     },
     wealth: {
@@ -1410,6 +1430,7 @@ export default function FinanceApp() {
   const [txGoalId, setTxGoalId] = useState(null);
   const [txGoalMode, setTxGoalMode] = useState('deposit');
   const [txGoalAmount, setTxGoalAmount] = useState('');
+  const [confirmRemoveGoalEntry, setConfirmRemoveGoalEntry] = useState(null); // { goalId, idx }
   const [scenarioExtra, setScenarioExtra] = useState(0);
 
   // Smart split flow — don't persist
@@ -2351,6 +2372,17 @@ export default function FinanceApp() {
   const updateGoal = (id, field, value) => {
     setGoals(goals.map(g => g.id === id ? { ...g, [field]: ['target', 'current', 'monthly'].includes(field) ? (value === '' ? 0 : Number(value)) : value } : g));
   };
+  const removeGoalHistoryEntry = (goalId, idx) => {
+    setGoals(goals.map(g => {
+      if (g.id !== goalId) return g;
+      const history = g.history || [];
+      if (idx < 0 || idx >= history.length) return g;
+      const entry = history[idx];
+      const newCurrent = Math.max(0, (Number(g.current) || 0) - entry.delta);
+      return { ...g, current: newCurrent, history: history.filter((_, i) => i !== idx) };
+    }));
+    setConfirmRemoveGoalEntry(null);
+  };
   const removeGoal = (id) => { setGoals(goals.filter(g => g.id !== id)); if (editingGoalId === id) setEditingGoalId(null); if (txGoalId === id) setTxGoalId(null); };
   const addGoal = () => {
     const newGoal = { id: Math.random().toString(36), name: t.goals.new, icon: 'circle', type: 'savings', target: 1000, current: 0, monthly: 0 };
@@ -3199,7 +3231,11 @@ export default function FinanceApp() {
               </div>
             )}
 
-            {goals.map(g => {
+            {[...goals].sort((a, b) => {
+              const ca = a.type === 'debt' ? 1 : 0;
+              const cb = b.type === 'debt' ? 1 : 0;
+              return ca - cb;
+            }).map(g => {
               const pct = g.target > 0 ? Math.round((g.current / g.target) * 100) : 0;
               const isEditing = editingGoalId === g.id;
               const isTx = txGoalId === g.id;
@@ -3212,8 +3248,27 @@ export default function FinanceApp() {
                 d.setMonth(d.getMonth() + months);
                 return `${t.month.names[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
               })() : null;
+              // Deadline-based pace check
+              let paceLabel = null;
+              let paceColor = null;
+              if (g.deadline && months != null) {
+                const dl = new Date(g.deadline + '-01');
+                const now = new Date();
+                const monthsToDeadline = (dl.getFullYear() - now.getFullYear()) * 12 + (dl.getMonth() - now.getMonth());
+                if (monthsToDeadline > 0) {
+                  const diff = monthsToDeadline - months;
+                  if (diff >= 1) { paceLabel = t.goals.ahead(diff); paceColor = C.accent; }
+                  else if (diff <= -1) { paceLabel = t.goals.behind(-diff); paceColor = C.red; }
+                  else { paceLabel = t.goals.onTrack; paceColor = C.accent; }
+                }
+              }
+              const cardStyle = isComplete
+                ? { ...s.card, background: `linear-gradient(135deg, ${C.accent}15, ${C.accentDeep}20)`, border: `1.5px solid ${C.accent}80` }
+                : isDebt
+                ? { ...s.card, borderLeft: `3px solid ${C.red}` }
+                : s.card;
               return (
-                <div key={g.id} style={s.card}>
+                <div key={g.id} style={cardStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                     <div style={{ ...s.rowIconBox, background: isDebt ? C.redSoft : C.accentSoft }}>
                       {renderIcon(g.icon, 16, isDebt ? C.red : C.accent, 2)}
@@ -3246,12 +3301,19 @@ export default function FinanceApp() {
 
                       {/* Time-to-target */}
                       {isComplete ? (
-                        <div style={{ marginTop: 10, padding: '8px 12px', background: C.accentSoft, color: C.accent, borderRadius: 10, fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          <Check size={13} strokeWidth={3} /> {t.goals.complete}
+                        <div style={{ marginTop: 12, padding: 14, background: 'rgba(46, 139, 136, 0.12)', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: 18, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <Check size={18} color={C.surface} strokeWidth={3} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: C.accent }}>{t.goals.celebrationTitle}</div>
+                            <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 2 }}>{t.goals.celebrationSub}</div>
+                          </div>
                         </div>
                       ) : months != null ? (
                         <div style={{ marginTop: 10, fontSize: 12, color: C.inkSoft }}>
                           {t.goals.monthsLeft(months)}{targetDate ? ` · ${t.goals.reachedBy(targetDate)}` : ''}
+                          {paceLabel && <span style={{ color: paceColor, fontWeight: 700, marginLeft: 6 }}>· {paceLabel}</span>}
                         </div>
                       ) : (
                         <div style={{ marginTop: 10, fontSize: 11, color: C.inkMuted, fontStyle: 'italic' }}>{t.goals.noEta}</div>
@@ -3304,6 +3366,53 @@ export default function FinanceApp() {
                           <button style={{ flex: 1, padding: '7px 10px', fontSize: 11, fontFamily: fontSans, border: `1px solid ${g.type === 'debt' ? C.red : C.line}`, background: g.type === 'debt' ? C.red : 'transparent', color: g.type === 'debt' ? C.surface : C.inkSoft, borderRadius: 10, cursor: 'pointer', fontWeight: 600 }} onClick={() => updateGoal(g.id, 'type', 'debt')}>{t.goals.debt}</button>
                         </div>
                       </div>
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>
+                          {t.goals.deadline} <span style={{ color: C.inkMuted, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {t.goals.deadlineHint}</span>
+                        </div>
+                        <input
+                          type="month"
+                          value={g.deadline || ''}
+                          onChange={(e) => updateGoal(g.id, 'deadline', e.target.value)}
+                          style={{ ...s.input, padding: '8px 12px', fontSize: 16, color: C.ink }}
+                        />
+                      </div>
+                      {(g.history || []).length > 0 && (
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.goals.historyTitle}</div>
+                          <div>
+                            {g.history.slice(-10).reverse().map((h, displayIdx) => {
+                              const originalIdx = g.history.length - 1 - displayIdx;
+                              const isConfirming = confirmRemoveGoalEntry && confirmRemoveGoalEntry.goalId === g.id && confirmRemoveGoalEntry.idx === originalIdx;
+                              const isLast = displayIdx === Math.min(g.history.length, 10) - 1;
+                              return (
+                                <div key={originalIdx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 0', borderBottom: isLast ? 'none' : `1px solid ${C.lineSoft}` }}>
+                                  {isConfirming ? (
+                                    <>
+                                      <div style={{ fontSize: 11, color: C.inkSoft, flex: 1 }}>{t.goals.removeEntryQ}</div>
+                                      <button onClick={() => setConfirmRemoveGoalEntry(null)} style={{ background: 'transparent', border: `1px solid ${C.lineSoft}`, color: C.inkSoft, padding: '4px 10px', borderRadius: 8, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600 }}>{t.common.cancel}</button>
+                                      <button onClick={() => removeGoalHistoryEntry(g.id, originalIdx)} style={{ background: C.red, border: 'none', color: C.surface, padding: '4px 10px', borderRadius: 8, cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600 }}>{t.common.delete}</button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div style={{ fontSize: 11, color: C.inkSoft, flexShrink: 0 }}>{fmtShortDate(h.ts, t)}</div>
+                                      <div style={{ flex: 1, display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 8 }}>
+                                        <span style={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: h.delta >= 0 ? C.accent : C.red }}>
+                                          {h.delta >= 0 ? '+' : '-'}{fmt(Math.abs(h.delta), t)}
+                                        </span>
+                                        <span style={{ fontSize: 11, color: C.inkMuted, fontVariantNumeric: 'tabular-nums' }}>→ {fmt(h.balanceAfter, t)}</span>
+                                      </div>
+                                      <button onClick={() => setConfirmRemoveGoalEntry({ goalId: g.id, idx: originalIdx })} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.inkMuted, padding: 2, display: 'flex', alignItems: 'center' }} aria-label={t.common.delete}>
+                                        <X size={13} />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                       <button style={{ gridColumn: 'span 2', ...s.ghostBtn, justifyContent: 'center', background: C.redSoft, color: C.red, padding: '10px', borderRadius: 10, marginTop: 4 }} onClick={() => removeGoal(g.id)}>
                         <Trash2 size={12} /> {t.goals.delete}
                       </button>
