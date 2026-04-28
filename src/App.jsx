@@ -98,6 +98,8 @@ const copy = {
     },
     home: {
       greeting: 'Good day',
+      greetings: { morning: 'Good morning', afternoon: 'Good afternoon', evening: 'Good evening', night: 'Hi' },
+      monthPrompts: { firstWeek: 'Time to plan this month', lastWeek: 'Time for your check-in' },
       thisMonth: 'This month',
       income: 'Income',
       allocated: 'Allocated',
@@ -107,8 +109,15 @@ const copy = {
       today: 'Today',
       in10: '10 years',
       goalsTitle: 'Goals',
+      goalsEmpty: 'No goals yet. Add one in the Goals tab.',
+      goalsViewAll: 'View all',
+      goalThisMonth: (amt) => `+${amt} this month`,
+      vsLastMonth: (delta, label, monthName) => `${delta} ${label} vs ${monthName}`,
+      saved: 'saved',
+      spent: 'spent',
       insightsTitle: 'What matters',
       noInsights: 'Your plan looks steady.',
+      insightActions: { rebalance: 'Rebalance', view: 'View', adjust: 'Adjust' },
       checkInTitle: 'Time for your monthly check-in',
       checkInSub: 'Update your wealth and goals to see fresh projections.',
       checkInCta: 'Start check-in',
@@ -401,6 +410,8 @@ const copy = {
     },
     home: {
       greeting: 'Olá',
+      greetings: { morning: 'Bom dia', afternoon: 'Boa tarde', evening: 'Boa noite', night: 'Olá' },
+      monthPrompts: { firstWeek: 'Hora de planejar o mês', lastWeek: 'Hora do seu check-in' },
       thisMonth: 'Este mês',
       income: 'Renda',
       allocated: 'Alocado',
@@ -410,8 +421,15 @@ const copy = {
       today: 'Hoje',
       in10: '10 anos',
       goalsTitle: 'Metas',
+      goalsEmpty: 'Sem metas ainda. Adicione uma na aba Metas.',
+      goalsViewAll: 'Ver todas',
+      goalThisMonth: (amt) => `+${amt} este mês`,
+      vsLastMonth: (delta, label, monthName) => `${delta} ${label} vs ${monthName}`,
+      saved: 'guardado',
+      spent: 'gasto',
       insightsTitle: 'O que importa',
       noInsights: 'Seu plano está estável.',
+      insightActions: { rebalance: 'Rebalancear', view: 'Ver', adjust: 'Ajustar' },
       checkInTitle: 'Hora do seu check-in mensal',
       checkInSub: 'Atualize patrimônio e metas para ver novas projeções.',
       checkInCta: 'Começar check-in',
@@ -1387,6 +1405,7 @@ export default function FinanceApp() {
           text: lang === 'en'
             ? `${pct}% of your wealth is in ${biggest.name}. Worth considering diversification.`
             : `${pct}% do seu patrimônio está em ${biggest.name}. Vale pensar em diversificar.`,
+          action: { tab: 'wealth', label: t.home.insightActions.rebalance },
         });
       }
     }
@@ -1399,6 +1418,7 @@ export default function FinanceApp() {
           text: lang === 'en'
             ? `At this pace, you reach ${fmtShort(in10, t)} in 10 years.`
             : `Nesse ritmo, você chega em ${fmtShort(in10, t)} em 10 anos.`,
+          action: { tab: 'forecast', label: t.home.insightActions.view },
         });
       }
     }
@@ -1413,12 +1433,45 @@ export default function FinanceApp() {
             text: lang === 'en'
               ? `"${g.name}" is ${pct}% complete. About ${monthsLeft} months to go.`
               : `"${g.name}" está ${pct}% completa. Faltam uns ${monthsLeft} meses.`,
+            action: { tab: 'goals', label: t.home.insightActions.view },
           });
         }
       }
     });
     return out.slice(0, 3);
   }, [buckets, goals, totalWealth, lang, t]);
+
+  // Time-aware + month-aware greeting.
+  const homeGreeting = useMemo(() => {
+    const now = new Date();
+    const h = now.getHours();
+    const day = now.getDate();
+    const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const timeKey = h < 5 || h >= 23 ? 'night' : h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening';
+    const greeting = (t.home.greetings && t.home.greetings[timeKey]) || t.home.greeting;
+    const monthPrompt = day <= 7 ? t.home.monthPrompts?.firstWeek : day >= totalDays - 5 ? t.home.monthPrompts?.lastWeek : null;
+    return { greeting, monthPrompt };
+  }, [t]);
+
+  // Most-recent prior snapshot, for the "vs last month" delta.
+  const lastSnapshot = useMemo(() => {
+    if (!snapshots.length) return null;
+    const now = new Date();
+    const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return snapshots.filter(s => s.monthKey !== currentKey).slice(-1)[0] || null;
+  }, [snapshots]);
+
+  const monthlyDelta = useMemo(() => {
+    if (!lastSnapshot) return null;
+    const normPillar = (p) => p === 'wealth' ? 'save' : p === 'wants' ? 'spend' : p === 'needs' ? 'bills' : p;
+    const sumPillar = (its, target) => its.filter(i => normPillar(i.pillar) === target).reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    const lastSave = sumPillar(lastSnapshot.items, 'save');
+    const lastSpend = sumPillar(lastSnapshot.items, 'spend');
+    const saveDelta = (pillarTotals.save || 0) - lastSave;
+    const spendDelta = (pillarTotals.spend || 0) - lastSpend;
+    const monthIdx = parseInt(lastSnapshot.monthKey.split('-')[1]) - 1;
+    return { saveDelta, spendDelta, monthName: t.month.names[monthIdx] };
+  }, [lastSnapshot, pillarTotals, t]);
 
   const daysSinceCheckIn = useMemo(() => {
     if (!lastCheckIn) return null;
@@ -2233,9 +2286,12 @@ export default function FinanceApp() {
           <>
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4 }}>
-                ● {t.home.greeting}{userName ? `, ${userName}` : ''}
+                ● {homeGreeting.greeting}{userName ? `, ${userName}` : ''}
               </div>
               <h1 style={s.h1}>{monthName} <span style={{ color: C.inkMuted, fontWeight: 400 }}>{year}</span></h1>
+              {homeGreeting.monthPrompt && (
+                <div style={{ fontSize: 13, color: C.inkSoft, marginTop: -6 }}>{homeGreeting.monthPrompt}</div>
+              )}
             </div>
 
             <div style={s.heroCard}>
@@ -2259,6 +2315,21 @@ export default function FinanceApp() {
                 <span style={{ opacity: 0.85 }}>{t.home.allocated} <strong>{fmt(allocated, t)}</strong></span>
                 <span style={{ fontWeight: 600 }}>{isOver ? `${t.home.over} ${fmt(-unassigned, t)}` : `${t.home.free} ${fmt(unassigned, t)}`}</span>
               </div>
+              {monthlyDelta && (monthlyDelta.saveDelta !== 0 || monthlyDelta.spendDelta !== 0) && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.18)', fontSize: 11, opacity: 0.9, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                  {monthlyDelta.saveDelta !== 0 && (
+                    <span>
+                      {monthlyDelta.saveDelta > 0 ? '↑' : '↓'} {fmt(Math.abs(monthlyDelta.saveDelta), t)} {t.home.saved}
+                    </span>
+                  )}
+                  {monthlyDelta.spendDelta !== 0 && (
+                    <span>
+                      {monthlyDelta.spendDelta > 0 ? '↑' : '↓'} {fmt(Math.abs(monthlyDelta.spendDelta), t)} {t.home.spent}
+                    </span>
+                  )}
+                  <span style={{ opacity: 0.7 }}>vs {monthlyDelta.monthName}</span>
+                </div>
+              )}
             </div>
 
             {/* Check-in prompt */}
@@ -2295,6 +2366,43 @@ export default function FinanceApp() {
               </div>
             </div>
 
+            {/* Goals snapshot */}
+            <div style={s.card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div style={s.cardLabel}>{t.home.goalsTitle}</div>
+                <button style={s.ghostBtn} onClick={() => setTab('goals')}>
+                  {goals.length > 3 ? t.home.goalsViewAll : null} <ChevronRight size={12} />
+                </button>
+              </div>
+              {goals.length === 0 ? (
+                <div style={{ ...s.sub, fontSize: 13, color: C.inkMuted, fontStyle: 'italic' }}>{t.home.goalsEmpty}</div>
+              ) : (
+                goals.slice(0, 3).map((g, i) => {
+                  const pct = g.target > 0 ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0;
+                  const lastGoal = lastSnapshot?.goals?.find(lg => lg.name === g.name);
+                  const monthDelta = lastGoal ? (Number(g.current) || 0) - (Number(lastGoal.current) || 0) : 0;
+                  return (
+                    <div key={g.id} onClick={() => setTab('goals')} style={{ cursor: 'pointer', padding: '10px 0', borderBottom: i < Math.min(goals.length, 3) - 1 ? `1px solid ${C.lineSoft}` : 'none' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+                        <div style={s.rowIconBox}>{renderIcon(g.icon, 14, C.accent, 2)}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
+                          <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+                            {fmtShort(g.current, t)} / {fmtShort(g.target, t)}
+                            {monthDelta > 0 && <span style={{ color: C.accent, marginLeft: 6 }}>{t.home.goalThisMonth(fmtShort(monthDelta, t))}</span>}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: C.accent, fontVariantNumeric: 'tabular-nums' }}>{pct}%</div>
+                      </div>
+                      <div style={{ height: 4, background: C.lineSoft, borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: C.accent, borderRadius: 2 }} />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
             {/* Insights */}
             <div style={s.card}>
               <div style={{ ...s.cardLabel, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
@@ -2306,12 +2414,22 @@ export default function FinanceApp() {
                 insights.map((ins, i) => {
                   const iconMap = { alert: AlertCircle, trending: TrendingUp, goal: Target };
                   const Icon = iconMap[ins.icon] || Sparkles;
+                  const clickable = !!ins.action;
                   return (
-                    <div key={i} style={{ ...s.insightRow, background: C.accentSoft }}>
+                    <div
+                      key={i}
+                      onClick={clickable ? () => setTab(ins.action.tab) : undefined}
+                      style={{ ...s.insightRow, background: C.accentSoft, cursor: clickable ? 'pointer' : 'default' }}
+                    >
                       <div style={{ width: 28, height: 28, borderRadius: 8, background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.accent, flexShrink: 0 }}>
                         <Icon size={13} color={C.accent} strokeWidth={2} />
                       </div>
                       <div style={{ flex: 1, fontSize: 13, lineHeight: 1.4 }}>{ins.text}</div>
+                      {clickable && (
+                        <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: C.accent, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                          {ins.action.label} <ChevronRight size={11} />
+                        </span>
+                      )}
                     </div>
                   );
                 })
