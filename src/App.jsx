@@ -179,6 +179,11 @@ const copy = {
       replaceTitle: 'Replace your current plan?',
       replaceBody: 'Items stay; only the amounts change to follow the recommended pillar shares.',
       replaceCta: 'Replace plan',
+      clearPlan: 'Clear plan',
+      clearTitle: 'Clear your current plan?',
+      clearBody: 'All item amounts go to zero. Items, names, and benchmarks stay.',
+      clearCta: 'Clear',
+      smartSheet: 'Smart Split',
       templates: 'Or pick a template',
       lastMonth: (amt) => `Last month: ${amt}`,
       planSaved: 'Plan saved',
@@ -501,6 +506,11 @@ const copy = {
       replaceTitle: 'Substituir seu plano atual?',
       replaceBody: 'Os itens continuam; apenas os valores mudam pra seguir as proporções recomendadas.',
       replaceCta: 'Substituir plano',
+      clearPlan: 'Limpar plano',
+      clearTitle: 'Limpar seu plano atual?',
+      clearBody: 'Todos os valores vão pra zero. Itens, nomes e benchmarks ficam.',
+      clearCta: 'Limpar',
+      smartSheet: 'Plano Inteligente',
       templates: 'Ou escolha um modelo',
       lastMonth: (amt) => `Mês passado: ${amt}`,
       planSaved: 'Plano salvo',
@@ -1339,6 +1349,7 @@ export default function FinanceApp() {
   const [editingPillarTarget, setEditingPillarTarget] = useState(null);
   const [surplusRedirectOpen, setSurplusRedirectOpen] = useState(false);
   const [pendingApply, setPendingApply] = useState(null);
+  const [confirmingClear, setConfirmingClear] = useState(false);
   const [saveToast, setSaveToast] = useState(null);
 
   // UI state — don't persist editing flags etc.
@@ -2168,6 +2179,11 @@ export default function FinanceApp() {
     }
   };
 
+  const clearPlan = () => {
+    setItems(items.map(it => ({ ...it, amount: 0 })));
+    setConfirmingClear(false);
+  };
+
   const applySmartSplit = (split) => {
     // Aggregate the recommended split into pillar totals.
     const pillarTargets = { save: 0, bills: 0, spend: 0, debt: 0 };
@@ -2656,78 +2672,85 @@ export default function FinanceApp() {
               </div>
             )}
 
-            {/* Smart Split questions */}
-            {smartStep && smartStep !== 'result' && (
-              <div style={s.card}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                  <div style={s.cardLabel}>{t.allocate.smart.title} · {t.allocate.smart.step(smartStep === 'q1' ? 1 : smartStep === 'q2' ? 2 : 3)}</div>
-                  <button style={s.ghostBtn} onClick={() => { setSmartStep(null); setSmartAnswers({}); }}><X size={12} /></button>
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 14, color: C.ink }}>{t.allocate.smart[smartStep].label}</div>
-                {t.allocate.smart[smartStep].options.map(opt => (
-                  <div
-                    key={opt.v}
-                    style={s.optionCard(smartAnswers[smartStep] === opt.v)}
-                    onClick={() => {
-                      const newAns = { ...smartAnswers, [smartStep]: opt.v };
-                      setSmartAnswers(newAns);
-                      setTimeout(() => {
-                        if (smartStep === 'q1') setSmartStep('q2');
-                        else if (smartStep === 'q2') setSmartStep('q3');
-                        else {
-                          const result = generatePillarSplit(salary, newAns, mainGoal, country);
-                          setSmartResult(result);
-                          setSmartStep('result');
-                        }
-                      }, 180);
-                    }}
-                  >
-                    <div style={s.optionLabel}><div style={s.optionLabelMain}>{opt.l}</div></div>
-                    <div style={s.optionCheck(smartAnswers[smartStep] === opt.v)}>
-                      {smartAnswers[smartStep] === opt.v && <Check size={12} color={C.surface} strokeWidth={3} />}
+            {/* Smart Split bottom sheet (questions + results) */}
+            {smartStep && (
+              <div onClick={() => { setSmartStep(null); setSmartAnswers({}); setSmartResult(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: '85dvh', overflowY: 'auto', background: C.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)' }}>
+                  <div style={{ width: 36, height: 4, background: C.line, borderRadius: 2, margin: '0 auto 14px' }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: C.ink }}>
+                      {t.allocate.smartSheet}
+                      {smartStep !== 'result' && <span style={{ fontSize: 12, color: C.inkMuted, marginLeft: 8, fontWeight: 500 }}>· {t.allocate.smart.step(smartStep === 'q1' ? 1 : smartStep === 'q2' ? 2 : 3)}</span>}
                     </div>
+                    <button style={s.ghostBtn} onClick={() => { setSmartStep(null); setSmartAnswers({}); setSmartResult(null); }}><X size={14} /></button>
                   </div>
-                ))}
-              </div>
-            )}
 
-            {/* Smart Split results */}
-            {smartStep === 'result' && smartResult && (
-              <>
-                <div style={{ ...s.card, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{t.allocate.smart.title}</div>
-                  <button style={s.ghostBtn} onClick={() => { setSmartStep('q1'); setSmartAnswers({}); setSmartResult(null); }}>
-                    <RotateCcw size={11} /> {t.allocate.smart.recalc}
-                  </button>
+                  {smartStep !== 'result' && (
+                    <>
+                      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 14, color: C.ink }}>{t.allocate.smart[smartStep].label}</div>
+                      {t.allocate.smart[smartStep].options.map(opt => (
+                        <div
+                          key={opt.v}
+                          style={s.optionCard(smartAnswers[smartStep] === opt.v)}
+                          onClick={() => {
+                            const newAns = { ...smartAnswers, [smartStep]: opt.v };
+                            setSmartAnswers(newAns);
+                            setTimeout(() => {
+                              if (smartStep === 'q1') setSmartStep('q2');
+                              else if (smartStep === 'q2') setSmartStep('q3');
+                              else {
+                                const result = generatePillarSplit(salary, newAns, mainGoal, country);
+                                setSmartResult(result);
+                                setSmartStep('result');
+                              }
+                            }, 180);
+                          }}
+                        >
+                          <div style={s.optionLabel}><div style={s.optionLabelMain}>{opt.l}</div></div>
+                          <div style={s.optionCheck(smartAnswers[smartStep] === opt.v)}>
+                            {smartAnswers[smartStep] === opt.v && <Check size={12} color={C.surface} strokeWidth={3} />}
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  {smartStep === 'result' && smartResult && (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                        <button style={s.ghostBtn} onClick={() => { setSmartStep('q1'); setSmartAnswers({}); setSmartResult(null); }}>
+                          <RotateCcw size={11} /> {t.allocate.smart.recalc}
+                        </button>
+                      </div>
+                      <SplitOptionCard
+                        title={t.allocate.smart.balanced.label}
+                        sub={t.allocate.smart.balanced.sub}
+                        badge={t.allocate.smart.balanced.badge}
+                        tradeoff={t.allocate.smart.tradeoff.balanced}
+                        split={smartResult.balanced}
+                        salary={salary}
+                        t={t}
+                        color={C.accent}
+                        pillarsCopy={t.allocate.pillars}
+                        onApply={() => requestApply(() => applySmartSplit(smartResult.balanced))}
+                      />
+                      <SplitOptionCard
+                        title={t.allocate.smart.focused.label}
+                        sub={t.allocate.smart.focused.sub}
+                        badge={t.allocate.smart.focused.badge}
+                        tradeoff={t.allocate.smart.tradeoff[smartResult.tradeoffKey]}
+                        split={smartResult.focused}
+                        salary={salary}
+                        t={t}
+                        color={C.accentDeep}
+                        pillarsCopy={t.allocate.pillars}
+                        onApply={() => requestApply(() => applySmartSplit(smartResult.focused))}
+                        isFocused
+                      />
+                    </>
+                  )}
                 </div>
-
-                <SplitOptionCard
-                  title={t.allocate.smart.balanced.label}
-                  sub={t.allocate.smart.balanced.sub}
-                  badge={t.allocate.smart.balanced.badge}
-                  tradeoff={t.allocate.smart.tradeoff.balanced}
-                  split={smartResult.balanced}
-                  salary={salary}
-                  t={t}
-                  color={C.accent}
-                  pillarsCopy={t.allocate.pillars}
-                  onApply={() => requestApply(() => applySmartSplit(smartResult.balanced))}
-                />
-
-                <SplitOptionCard
-                  title={t.allocate.smart.focused.label}
-                  sub={t.allocate.smart.focused.sub}
-                  badge={t.allocate.smart.focused.badge}
-                  tradeoff={t.allocate.smart.tradeoff[smartResult.tradeoffKey]}
-                  split={smartResult.focused}
-                  salary={salary}
-                  t={t}
-                  color={C.accentDeep}
-                  pillarsCopy={t.allocate.pillars}
-                  onApply={() => requestApply(() => applySmartSplit(smartResult.focused))}
-                  isFocused
-                />
-              </>
+              </div>
             )}
 
             {/* Pillars */}
@@ -2954,6 +2977,9 @@ export default function FinanceApp() {
                     ))}
                   </div>
                 )}
+                <button onClick={() => setConfirmingClear(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 10, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: fontSans, fontSize: 11, fontWeight: 600, color: C.inkMuted, padding: 4 }}>
+                  <X size={11} /> {t.allocate.clearPlan}
+                </button>
               </div>
             )}
 
@@ -3024,6 +3050,25 @@ export default function FinanceApp() {
                     </button>
                     <button onClick={() => { const fn = pendingApply; setPendingApply(null); fn && fn(); }} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: 'none', background: C.accent, color: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 14, fontWeight: 700 }}>
                       {t.allocate.replaceCta}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Clear plan confirmation */}
+            {confirmingClear && (
+              <div onClick={() => setConfirmingClear(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)' }}>
+                  <div style={{ width: 36, height: 4, background: C.line, borderRadius: 2, margin: '0 auto 16px' }} />
+                  <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 6 }}>{t.allocate.clearTitle}</div>
+                  <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 14, lineHeight: 1.5 }}>{t.allocate.clearBody}</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setConfirmingClear(false)} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: `1px solid ${C.lineSoft}`, background: 'transparent', color: C.inkSoft, cursor: 'pointer', fontFamily: fontSans, fontSize: 14, fontWeight: 600 }}>
+                      {t.common.cancel}
+                    </button>
+                    <button onClick={clearPlan} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: 'none', background: C.red, color: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 14, fontWeight: 700 }}>
+                      {t.allocate.clearCta}
                     </button>
                   </div>
                 </div>
