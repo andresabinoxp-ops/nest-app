@@ -2029,6 +2029,18 @@ export default function FinanceApp() {
     slider: { width: '100%', accentColor: C.accent, height: 4 },
   };
 
+  // Inline (i) icon that opens a plain-English glossary sheet for the given key.
+  // Defined here (before any conditional return) so every render path can use it.
+  const Info = ({ k }) => (
+    <button
+      onClick={(e) => { e.stopPropagation(); setOpenInfo(k); }}
+      style={{ background: 'transparent', border: 'none', padding: 0, marginLeft: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle' }}
+      aria-label="More info"
+    >
+      <span style={{ width: 14, height: 14, borderRadius: 7, border: `1.5px solid ${C.inkMuted}`, color: C.inkMuted, fontSize: 9, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'serif', lineHeight: 1 }}>i</span>
+    </button>
+  );
+
   // ============ ONBOARDING ============
   if (phase === 'onboarding') {
     const toggleSaveFor = (v) => {
@@ -2465,17 +2477,6 @@ export default function FinanceApp() {
     setConfirmRemoveGoalEntry(null);
   };
   const removeGoal = (id) => { setGoals(goals.filter(g => g.id !== id)); if (editingGoalId === id) setEditingGoalId(null); if (txGoalId === id) setTxGoalId(null); };
-
-  // Inline (i) icon that opens a plain-English glossary sheet for the given key.
-  const Info = ({ k }) => (
-    <button
-      onClick={(e) => { e.stopPropagation(); setOpenInfo(k); }}
-      style={{ background: 'transparent', border: 'none', padding: 0, marginLeft: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle' }}
-      aria-label="More info"
-    >
-      <span style={{ width: 14, height: 14, borderRadius: 7, border: `1.5px solid ${C.inkMuted}`, color: C.inkMuted, fontSize: 9, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'serif', lineHeight: 1 }}>i</span>
-    </button>
-  );
   const addGoal = () => {
     const newGoal = { id: Math.random().toString(36), name: t.goals.new, icon: 'circle', type: 'savings', target: 1000, current: 0, monthly: 0 };
     setGoals([...goals, newGoal]);
