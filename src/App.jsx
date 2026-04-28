@@ -1769,6 +1769,37 @@ export default function FinanceApp() {
     };
   }, []);
 
+  // One-time migration: a prior version of the link PR seeded a duplicate
+  // Save item for save-for picks that overlapped with default items
+  // (e.g. Emergency fund). For each goalId-bearing item with a £0 amount and
+  // a name twin in the same pillar that has no link, transfer the link to
+  // the original and drop the duplicate.
+  useEffect(() => {
+    const norm = (s) => (s || '').trim().toLowerCase();
+    const dupes = items.filter(i => i.goalId && (Number(i.amount) || 0) === 0);
+    let needsMigration = false;
+    const merged = [];
+    const consumed = new Set();
+    items.forEach(i => {
+      if (consumed.has(i.id)) return;
+      const isDupe = dupes.some(d => d.id === i.id);
+      if (isDupe) {
+        const twin = items.find(o => o.id !== i.id && o.pillar === i.pillar && !o.goalId && norm(o.name) === norm(i.name));
+        if (twin) {
+          needsMigration = true;
+          consumed.add(i.id);
+          merged.push({ ...twin, goalId: i.goalId });
+          consumed.add(twin.id);
+          return;
+        }
+      }
+      if (!consumed.has(i.id)) merged.push(i);
+    });
+    if (needsMigration) setItems(merged);
+    // Run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Persist state whenever anything important changes
   useEffect(() => {
     saveState({
@@ -2062,8 +2093,7 @@ export default function FinanceApp() {
       goalId: null,
     }));
 
-    // Seed goals from saveFor picks. Each pick also gets a linked Save item so
-    // Allocate ↔ Goals are connected from day one.
+    // Seed goals from saveFor picks.
     const savForOptions = copy[langKey].onboarding.saveFor.options;
     const selected = savForOptions.filter(o => saveForPicks.includes(o.v));
     const defaultTargets = { emergency: 10000, vacation: 5000, car: 15000, home: 50000, wedding: 20000, retirement: 100000, other: 5000 };
@@ -2076,16 +2106,32 @@ export default function FinanceApp() {
       current: 0,
       monthly: 0,
     }));
-    // Attach a linked Save item for each goal — appears in Allocate, ready to fund.
-    const linkedItems = seededGoals.map(g => ({
-      id: Math.random().toString(36),
-      name: g.name,
-      pillar: 'save',
-      amount: 0,
-      benchmarkKey: 'savings',
-      goalId: g.id,
-    }));
-    setItems([...defaultItems, ...linkedItems]);
+
+    // For each seeded goal, either link to an existing default Save item with
+    // a matching name (Emergency fund, Savings, Investments) or create a new
+    // linked item (Vacation, New car, Home, etc.). This avoids the duplicate
+    // "Emergency fund" rows that the first version of this PR shipped.
+    const norm = (s) => (s || '').trim().toLowerCase();
+    const usedItemIds = new Set();
+    const seededItems = [...defaultItems];
+    seededGoals.forEach(g => {
+      const match = seededItems.find(i => i.pillar === 'save' && !i.goalId && !usedItemIds.has(i.id) && norm(i.name) === norm(g.name));
+      if (match) {
+        usedItemIds.add(match.id);
+        match.goalId = g.id;
+      } else {
+        seededItems.push({
+          id: Math.random().toString(36),
+          name: g.name,
+          pillar: 'save',
+          amount: 0,
+          benchmarkKey: 'savings',
+          icon: g.icon,
+          goalId: g.id,
+        });
+      }
+    });
+    setItems(seededItems);
     setGoals(seededGoals);
 
     // Seed buckets from investor profile
