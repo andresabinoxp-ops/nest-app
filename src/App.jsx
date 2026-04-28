@@ -4,7 +4,7 @@ import {
   Home as HomeIcon, Target, Wallet, TrendingUp, User, Plus, Trash2, Pencil, Languages,
   Sparkles, Check, X, ChevronRight, ChevronLeft, Plane, Shield, Car, ShoppingBag, CreditCard,
   BarChart3, PiggyBank, Heart, Gem, Circle, Globe, RotateCcw, ArrowRight, LineChart as LineChartIcon,
-  AlertCircle, Settings, ArrowDownUp
+  AlertCircle, Settings, ArrowDownUp, Zap, Phone
 } from 'lucide-react';
 
 // ============================================================
@@ -237,6 +237,44 @@ const copy = {
         goalEta: (goal, date) => `At this pace, ${goal} ready by ${date}.`,
         savesYear: (amt) => `This plan adds ${amt} to your wealth this year.`,
         empty: 'Plan how your income flows this month.',
+      },
+      smartAction: {
+        spendHighTitle: 'Spend is above typical',
+        spendHighSub: (gap) => `${gap}pp over. Shift some to Save and hit goals faster.`,
+        spendHighCta: 'Try the swap',
+        billsHighTitle: 'Bills are above typical',
+        billsHighSub: (gap) => `${gap}pp over. Real-world levers — not a number trick.`,
+        billsHighCta: 'See levers',
+        saveLowTitle: 'Save is below typical',
+        saveLowSub: (gap) => `${gap}pp under. Try paying yourself before discretionary spend.`,
+        saveLowCta: 'How',
+      },
+      swap: {
+        title: 'Shift Spend → Save',
+        sub: 'Trim Spend by this much and add it to Save. This commits you to spending less in real life — pick where.',
+        amount: 'Amount to shift',
+        consequenceGoal: (goal, months) => `${goal} ${months}mo sooner`,
+        consequenceWealth: (amt) => `+${amt}/yr to your wealth`,
+        consequenceLabel: '→',
+        apply: 'Apply shift',
+        cancel: 'Cancel',
+        nothingSpend: 'No Spend items to trim. Add a Spend item first.',
+        nothingSave: 'No Save items to bump. Add a Save item first.',
+      },
+      billsTips: {
+        title: 'Trim your Bills',
+        sub: (gap) => `Bills are ${gap}pp above typical. Real-world levers — not a number trick.`,
+        close: 'Got it',
+      },
+      saveTips: {
+        title: 'Pay yourself first',
+        sub: 'Save isn\'t what\'s left over — it\'s what comes off the top.',
+        close: 'Got it',
+        tips: [
+          { title: 'Automate the transfer', body: 'Set a standing order on payday for your Save amount. You can\'t skip it if it\'s already gone.' },
+          { title: 'Save the raise', body: 'When income jumps, send the difference to Save before lifestyle catches up.' },
+          { title: 'One-account rule', body: 'Keep Save in a separate account you don\'t see day-to-day.' },
+        ],
       },
       smartCard: {
         title: 'Not sure how to split?',
@@ -680,6 +718,44 @@ const copy = {
         savesYear: (amt) => `Esse plano soma ${amt} ao seu patrimônio este ano.`,
         empty: 'Planeje como seu dinheiro flui este mês.',
       },
+      smartAction: {
+        spendHighTitle: 'Gasto está acima do típico',
+        spendHighSub: (gap) => `${gap}pp a mais. Mande pra Guardar e bata metas mais rápido.`,
+        spendHighCta: 'Fazer a troca',
+        billsHighTitle: 'Contas estão acima do típico',
+        billsHighSub: (gap) => `${gap}pp a mais. Mexa no real — não só no número.`,
+        billsHighCta: 'Ver alavancas',
+        saveLowTitle: 'Guardar está abaixo do típico',
+        saveLowSub: (gap) => `${gap}pp a menos. Tente pagar você primeiro, antes do gasto livre.`,
+        saveLowCta: 'Como',
+      },
+      swap: {
+        title: 'Trocar Gasto → Guardar',
+        sub: 'Corte o Gasto neste valor e mande pra Guardar. Isso te compromete a gastar menos de verdade — escolha onde cortar.',
+        amount: 'Quanto trocar',
+        consequenceGoal: (goal, months) => `${goal} ${months} meses antes`,
+        consequenceWealth: (amt) => `+${amt}/ano no seu patrimônio`,
+        consequenceLabel: '→',
+        apply: 'Aplicar troca',
+        cancel: 'Cancelar',
+        nothingSpend: 'Sem itens de Gasto pra cortar. Adicione um item de Gasto primeiro.',
+        nothingSave: 'Sem itens de Guardar pra reforçar. Adicione um item de Guardar primeiro.',
+      },
+      billsTips: {
+        title: 'Reduzir suas Contas',
+        sub: (gap) => `Contas estão ${gap}pp acima do típico. Mexa no real — não só no número.`,
+        close: 'Entendi',
+      },
+      saveTips: {
+        title: 'Pague você primeiro',
+        sub: 'Guardar não é o que sobra — é o que sai antes.',
+        close: 'Entendi',
+        tips: [
+          { title: 'Automatize a transferência', body: 'Programe uma transferência no dia do pagamento pro valor que você vai guardar. Não tem como pular se já saiu.' },
+          { title: 'Guarde o aumento', body: 'Quando a renda subir, mande a diferença pra Guardar antes do estilo de vida acompanhar.' },
+          { title: 'Conta separada', body: 'Mantenha Guardar numa conta que você não vê no dia a dia.' },
+        ],
+      },
       smartCard: {
         title: 'Não sabe como dividir?',
         sub: '3 perguntas rápidas. Dois planos sugeridos.',
@@ -1046,6 +1122,44 @@ const TEMPLATES_PT = [
   { key: 'fire', name: 'Aposentadoria cedo', sub: 'Independência financeira', fractions: { housing: 0.24, utilities: 0.06, groceries: 0.13, transport: 0.10, lifestyle: 0.08, emergency: 0.04, savings: 0.10, investments: 0.25, debt: 0 } },
   { key: 'family', name: 'Família', sub: 'Mais para a casa', fractions: { housing: 0.28, utilities: 0.08, groceries: 0.20, transport: 0.12, lifestyle: 0.08, emergency: 0.05, savings: 0.09, investments: 0.09, debt: 0.01 } },
 ];
+
+// Country-aware levers for cutting Bills. These are real-world actions —
+// the app intentionally won't auto-rewrite Bill amounts, since paying less
+// for a service requires the user to actually take the action.
+const BILLS_TIPS = {
+  en: {
+    uk: [
+      { icon: 'bolt', title: 'Switch energy provider', body: 'Compare on Uswitch or MoneySuperMarket. Switching once a year typically saves £200–500.' },
+      { icon: 'phone', title: 'Renegotiate phone & broadband', body: 'Out-of-contract bills are usually 30–50% higher. Call to leave; they\'ll offer a retention deal.' },
+      { icon: 'subs', title: 'Audit subscriptions', body: 'Most people pay £80–150/mo across streaming, gym, software. Cancel anything you didn\'t open this month.' },
+      { icon: 'home', title: 'Check your council tax band', body: '~10% of UK homes are in the wrong band. The Valuation Office can reassess for free.' },
+      { icon: 'shield', title: 'Compare insurance at renewal', body: 'Auto-renewals are rarely the best price. Compare home, car, and life every year.' },
+    ],
+    br: [
+      { icon: 'bolt', title: 'Reveja a tarifa de energia', body: 'Tarifa branca, troca de bandeira e (se possível) trocar de geradora pode reduzir a conta em 10–20%.' },
+      { icon: 'phone', title: 'Negocie internet e celular', body: 'Antes do vencimento do contrato, ligue pra cancelar — vão oferecer desconto. Portabilidade também ajuda.' },
+      { icon: 'subs', title: 'Auditoria de assinaturas', body: 'Maioria gasta R$300–500/mês em streaming, academia, software que mal usa. Corte o que não abriu este mês.' },
+      { icon: 'home', title: 'Plano de saúde', body: 'Compare todo ano. Coparticipação ou planos por adesão costumam ser mais baratos.' },
+      { icon: 'shield', title: 'Renovação de seguros', body: 'Renovação automática raramente é o melhor preço. Cotar auto e residencial todo ano dá pra economizar muito.' },
+    ],
+  },
+  pt: {
+    uk: [
+      { icon: 'bolt', title: 'Trocar de fornecedora de energia', body: 'Compare no Uswitch ou MoneySuperMarket. Trocar uma vez por ano costuma economizar £200–500.' },
+      { icon: 'phone', title: 'Renegociar telefone e internet', body: 'Contas fora de contrato custam 30–50% a mais. Ligue dizendo que vai sair; eles oferecem desconto.' },
+      { icon: 'subs', title: 'Auditar assinaturas', body: 'A maioria gasta £80–150/mês em streaming, academia, software. Cancele o que não abriu este mês.' },
+      { icon: 'home', title: 'Reveja seu council tax band', body: '~10% das casas no Reino Unido estão na faixa errada. O Valuation Office reavalia de graça.' },
+      { icon: 'shield', title: 'Comparar seguros na renovação', body: 'Renovação automática raramente é o melhor preço. Compare casa, carro e vida todo ano.' },
+    ],
+    br: [
+      { icon: 'bolt', title: 'Reveja a tarifa de energia', body: 'Tarifa branca, troca de bandeira e (se possível) trocar de geradora pode reduzir a conta em 10–20%.' },
+      { icon: 'phone', title: 'Negocie internet e celular', body: 'Antes do vencimento do contrato, ligue pra cancelar — vão oferecer desconto. Portabilidade também ajuda.' },
+      { icon: 'subs', title: 'Auditoria de assinaturas', body: 'Maioria gasta R$300–500/mês em streaming, academia, software que mal usa. Corte o que não abriu este mês.' },
+      { icon: 'home', title: 'Plano de saúde', body: 'Compare todo ano. Coparticipação ou planos por adesão costumam ser mais baratos.' },
+      { icon: 'shield', title: 'Renovação de seguros', body: 'Renovação automática raramente é o melhor preço. Cotar auto e residencial todo ano dá pra economizar muito.' },
+    ],
+  },
+};
 
 // Suggestion chips used to seed an empty pillar.
 const STARTER_ITEMS = {
@@ -1582,6 +1696,10 @@ export default function FinanceApp() {
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [saveToast, setSaveToast] = useState(null);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [swapOpen, setSwapOpen] = useState(false);
+  const [swapAmount, setSwapAmount] = useState(0);
+  const [billsTipsOpen, setBillsTipsOpen] = useState(false);
+  const [saveTipsOpen, setSaveTipsOpen] = useState(false);
 
   // UI state — don't persist editing flags etc.
   const [editingItemId, setEditingItemId] = useState(null);
@@ -1966,6 +2084,32 @@ export default function FinanceApp() {
     const share = unassigned / wealthItems.length;
     setItems(items.map(i => i.pillar === 'wealth' ? { ...i, amount: (Number(i.amount) || 0) + share } : i));
     setSurplusRedirectOpen(false);
+  };
+
+  // Move money from Spend to Save by trimming each Spend item proportionally
+  // and adding to each Save item proportionally. Honest: the user is committing
+  // to spending less in real life, so the plan should reflect that immediately.
+  const applySpendToSaveSwap = (amount) => {
+    const amt = Math.max(0, Math.round(Number(amount) || 0));
+    if (amt <= 0) return;
+    const spendItems = items.filter(i => i.pillar === 'spend' && Number(i.amount) > 0);
+    const saveItems = items.filter(i => i.pillar === 'save');
+    if (spendItems.length === 0 || saveItems.length === 0) return;
+    const spendTotal = spendItems.reduce((s, i) => s + Number(i.amount), 0);
+    const trim = Math.min(amt, spendTotal);
+    if (trim <= 0) return;
+    const spendShares = new Map(spendItems.map(i => [i.id, (Number(i.amount) / spendTotal) * trim]));
+    const saveTotal = saveItems.reduce((s, i) => s + Number(i.amount || 0), 0);
+    const saveShares = new Map(saveItems.map(i => {
+      const weight = saveTotal > 0 ? (Number(i.amount || 0) / saveTotal) : (1 / saveItems.length);
+      return [i.id, weight * trim];
+    }));
+    setItems(items.map(i => {
+      if (spendShares.has(i.id)) return { ...i, amount: Math.max(0, Math.round(Number(i.amount) - spendShares.get(i.id))) };
+      if (saveShares.has(i.id)) return { ...i, amount: Math.round(Number(i.amount || 0) + saveShares.get(i.id)) };
+      return i;
+    }));
+    setSwapOpen(false);
   };
   const handleSavePlan = () => {
     if (unassigned > 0) {
@@ -2989,6 +3133,66 @@ export default function FinanceApp() {
                     <div style={{ fontSize: 10, color: C.accent, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 2 }}>{t.allocate.consequence.eyebrow}</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, lineHeight: 1.4 }}>{line}</div>
                   </div>
+                </div>
+              );
+            })()}
+
+            {/* Smart Action — pillar-aware nudge. Bills can't be moved with a button
+                (they're real obligations); Save shouldn't be moved by reflex. So:
+                - Spend high → honest one-tap shift (the only true rebalance)
+                - Bills high → real-world levers sheet
+                - Save low → coaching (only when Spend isn't also high) */}
+            {smartStep === null && allocated > 0 && (() => {
+              const pct = (key) => Math.round(((pillarTotals[key] || 0) / allocated) * 100);
+              const target = (key) => Math.round((allocationBenchmark[key] || 0) * 100);
+              const spendGap = pct('spend') - target('spend');
+              const billsGap = pct('bills') - target('bills');
+              const saveGap = target('save') - pct('save');
+              const hasSpendItems = items.some(i => i.pillar === 'spend' && Number(i.amount) > 0);
+              const hasSaveItems = items.some(i => i.pillar === 'save');
+              let card = null;
+              if (spendGap >= 5 && hasSpendItems && hasSaveItems) {
+                const proposed = Math.max(0, Math.round((pct('spend') - target('spend')) * salary / 100));
+                card = {
+                  title: t.allocate.smartAction.spendHighTitle,
+                  sub: t.allocate.smartAction.spendHighSub(spendGap),
+                  cta: t.allocate.smartAction.spendHighCta,
+                  color: C.accent,
+                  icon: <ArrowDownUp size={14} color={C.accent} strokeWidth={2.5} />,
+                  onTap: () => { setSwapAmount(proposed); setSwapOpen(true); },
+                };
+              } else if (billsGap >= 5) {
+                card = {
+                  title: t.allocate.smartAction.billsHighTitle,
+                  sub: t.allocate.smartAction.billsHighSub(billsGap),
+                  cta: t.allocate.smartAction.billsHighCta,
+                  color: C.inkSoft,
+                  icon: <Zap size={14} color={C.inkSoft} strokeWidth={2.5} />,
+                  onTap: () => setBillsTipsOpen(true),
+                };
+              } else if (saveGap >= 5) {
+                card = {
+                  title: t.allocate.smartAction.saveLowTitle,
+                  sub: t.allocate.smartAction.saveLowSub(saveGap),
+                  cta: t.allocate.smartAction.saveLowCta,
+                  color: C.accent,
+                  icon: <PiggyBank size={14} color={C.accent} strokeWidth={2.5} />,
+                  onTap: () => setSaveTipsOpen(true),
+                };
+              }
+              if (!card) return null;
+              return (
+                <div style={{ marginBottom: 12, padding: '12px 14px', background: `${card.color}10`, border: `1px solid ${card.color}40`, borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 8, background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {card.icon}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>{card.title}</div>
+                    <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2, lineHeight: 1.4 }}>{card.sub}</div>
+                  </div>
+                  <button onClick={card.onTap} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 10, border: 'none', background: card.color, color: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 12, fontWeight: 700 }}>
+                    {card.cta}
+                  </button>
                 </div>
               );
             })()}
@@ -4481,6 +4685,146 @@ export default function FinanceApp() {
           <Check size={16} color={C.accent} strokeWidth={3} />
           <span style={{ fontSize: 13, fontWeight: 600 }}>{t.allocate.planSaved}</span>
           <span style={{ fontSize: 12, opacity: 0.7, fontVariantNumeric: 'tabular-nums', marginLeft: 'auto' }}>{saveToast}</span>
+        </div>
+      )}
+
+      {/* Spend → Save swap sheet */}
+      {swapOpen && (() => {
+        const sw = t.allocate.swap;
+        const spendItems = items.filter(i => i.pillar === 'spend' && Number(i.amount) > 0);
+        const saveItems = items.filter(i => i.pillar === 'save');
+        const spendTotal = spendItems.reduce((s, i) => s + Number(i.amount), 0);
+        const max = Math.floor(spendTotal);
+        const amt = Math.max(0, Math.min(max, Number(swapAmount) || 0));
+        // Consequence: if a goal is in flight, compute months saved; else show wealth/year.
+        const candidates = goals.filter(g => Number(g.target) > 0 && Number(g.current) < Number(g.target) && (Number(g.monthly) > 0 || amt > 0));
+        const goal = candidates.find(g => g.deadline) || candidates[0];
+        let consequenceText = sw.consequenceWealth(fmt(amt * 12, t));
+        if (goal) {
+          const remaining = Math.max(0, Number(goal.target) - Number(goal.current));
+          const oldMonthly = Math.max(1, Number(goal.monthly) || 0);
+          const newMonthly = oldMonthly + amt;
+          const oldMonths = Math.ceil(remaining / oldMonthly);
+          const newMonths = Math.ceil(remaining / newMonthly);
+          const saved = oldMonths - newMonths;
+          if (saved >= 1) consequenceText = sw.consequenceGoal(goal.name, saved);
+        }
+        return (
+          <div onClick={() => setSwapOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: '88vh', background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div style={{ width: 36, height: 4, background: C.line, borderRadius: 2, margin: '0 auto 14px' }} />
+              <div style={{ fontSize: 17, fontWeight: 700, color: C.ink, marginBottom: 6 }}>{sw.title}</div>
+              <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 18, lineHeight: 1.5 }}>{sw.sub}</div>
+
+              {(spendItems.length === 0) && (
+                <div style={{ padding: 14, background: C.surfaceAlt, borderRadius: 12, fontSize: 13, color: C.inkSoft, marginBottom: 16 }}>{sw.nothingSpend}</div>
+              )}
+              {(spendItems.length > 0 && saveItems.length === 0) && (
+                <div style={{ padding: 14, background: C.surfaceAlt, borderRadius: 12, fontSize: 13, color: C.inkSoft, marginBottom: 16 }}>{sw.nothingSave}</div>
+              )}
+
+              {(spendItems.length > 0 && saveItems.length > 0) && (
+                <>
+                  <div style={{ fontSize: 10, color: C.inkMuted, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>{sw.amount}</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>
+                    <span style={{ fontSize: 20, color: C.inkSoft }}>{t.currencySymbol}</span>
+                    <span style={{ fontSize: 32, fontWeight: 700, color: C.ink, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmtNumber(amt, t)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={max}
+                    step={Math.max(1, Math.round(max / 50))}
+                    value={amt}
+                    onChange={(e) => setSwapAmount(Number(e.target.value))}
+                    style={{ width: '100%', accentColor: C.accent, marginBottom: 16 }}
+                  />
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: `${C.accent}10`, border: `1px solid ${C.accent}40`, borderRadius: 12, marginBottom: 18 }}>
+                    <TrendingUp size={14} color={C.accent} strokeWidth={2.5} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: C.accent }}>{sw.consequenceLabel} {consequenceText}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setSwapOpen(false)} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: `1px solid ${C.line}`, background: C.surface, color: C.inkSoft, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 600 }}>
+                      {sw.cancel}
+                    </button>
+                    <button onClick={() => applySpendToSaveSwap(amt)} disabled={amt <= 0} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: 'none', background: amt > 0 ? C.accent : C.line, color: amt > 0 ? C.surface : C.inkMuted, cursor: amt > 0 ? 'pointer' : 'default', fontFamily: fontSans, fontSize: 13, fontWeight: 700 }}>
+                      {sw.apply}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Bills levers sheet — country-aware tips, no automation. */}
+      {billsTipsOpen && (() => {
+        const tips = (BILLS_TIPS[lang] && BILLS_TIPS[lang][country]) || BILLS_TIPS.en.uk;
+        const billsPct = allocated > 0 ? Math.round((pillarTotals.bills / allocated) * 100) : 0;
+        const billsTarget = Math.round((allocationBenchmark.bills || 0) * 100);
+        const gap = Math.max(0, billsPct - billsTarget);
+        const iconFor = (k) => {
+          if (k === 'bolt') return <Zap size={16} color={C.accent} strokeWidth={2} />;
+          if (k === 'phone') return <Phone size={16} color={C.accent} strokeWidth={2} />;
+          if (k === 'subs') return <ShoppingBag size={16} color={C.accent} strokeWidth={2} />;
+          if (k === 'home') return <HomeIcon size={16} color={C.accent} strokeWidth={2} />;
+          if (k === 'shield') return <Shield size={16} color={C.accent} strokeWidth={2} />;
+          return <Sparkles size={16} color={C.accent} strokeWidth={2} />;
+        };
+        return (
+          <div onClick={() => setBillsTipsOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: '88vh', background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div style={{ width: 36, height: 4, background: C.line, borderRadius: 2, margin: '0 auto 14px' }} />
+              <div style={{ fontSize: 17, fontWeight: 700, color: C.ink, marginBottom: 6 }}>{t.allocate.billsTips.title}</div>
+              <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 16, lineHeight: 1.5 }}>{t.allocate.billsTips.sub(gap)}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                {tips.map((tip, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 10, padding: 12, background: C.surfaceAlt, borderRadius: 12 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: `${C.accent}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {iconFor(tip.icon)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 3 }}>{tip.title}</div>
+                      <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.45 }}>{tip.body}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setBillsTipsOpen(false)} style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: 'none', background: C.accent, color: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 700 }}>
+                {t.allocate.billsTips.close}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Save tips sheet — coaching, not automation. */}
+      {saveTipsOpen && (
+        <div onClick={() => setSaveTipsOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: '88vh', background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <div style={{ width: 36, height: 4, background: C.line, borderRadius: 2, margin: '0 auto 14px' }} />
+            <div style={{ fontSize: 17, fontWeight: 700, color: C.ink, marginBottom: 6 }}>{t.allocate.saveTips.title}</div>
+            <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 16, lineHeight: 1.5 }}>{t.allocate.saveTips.sub}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+              {t.allocate.saveTips.tips.map((tip, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, padding: 12, background: C.surfaceAlt, borderRadius: 12 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: `${C.accent}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <PiggyBank size={16} color={C.accent} strokeWidth={2} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 3 }}>{tip.title}</div>
+                    <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.45 }}>{tip.body}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setSaveTipsOpen(false)} style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: 'none', background: C.accent, color: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 700 }}>
+              {t.allocate.saveTips.close}
+            </button>
+          </div>
         </div>
       )}
 
