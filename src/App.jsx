@@ -1899,7 +1899,7 @@ export default function FinanceApp() {
 
     return (
       <div style={s.app}>
-        <div style={s.onboardMain}>
+        <div style={{ ...s.onboardMain, paddingBottom: onboardStep === 5 ? 340 : 200 }}>
           <div style={s.onboardStickyHeader}>
             <div style={{ ...s.dots, marginBottom: stickyHeader ? 14 : 28 }}>
               {[0,1,2,3,4,5,6].map(i => <div key={i} style={s.dot(onboardStep === i)} />)}
@@ -2000,24 +2000,25 @@ export default function FinanceApp() {
                 const totalShare = profileBuckets.reduce((sum, b) => sum + b.share, 0) || 1;
                 const sel = investorProfile === opt.v;
                 return (
-                  <div key={opt.v} style={{ ...s.optionCard(sel), alignItems: 'flex-start', flexDirection: 'column', gap: 0, padding: 12, marginBottom: 8 }} onClick={() => setInvestorProfile(opt.v)}>
+                  <div key={opt.v} style={{ ...s.optionCard(sel), alignItems: 'flex-start', flexDirection: 'column', gap: 0, padding: 14 }} onClick={() => setInvestorProfile(opt.v)}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
                       <div style={s.optionIconBox(sel)}>{renderIcon(opt.icon, 16, sel ? C.surface : C.inkSoft, 2)}</div>
                       <div style={{ ...s.optionLabel, flex: 1 }}>
                         <div style={s.optionLabelMain}>{opt.l}</div>
+                        <div style={s.optionLabelSub}>{opt.sub}</div>
                       </div>
                       <div style={s.optionCheck(sel)}>{sel && <Check size={12} color={C.surface} strokeWidth={3} />}</div>
                     </div>
                     {profileBuckets.length > 0 && (
-                      <div style={{ width: '100%', marginTop: 10, boxSizing: 'border-box' }}>
-                        <div style={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', background: C.lineSoft }}>
+                      <div style={{ width: '100%', marginTop: 12, boxSizing: 'border-box' }}>
+                        <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: C.lineSoft }}>
                           {profileBuckets.map((b, i) => (
                             <div key={i} style={{ width: `${(b.share / totalShare) * 100}%`, background: BUCKET_COLORS[b.type] || C.inkMuted }} />
                           ))}
                         </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4, fontSize: 9, color: C.inkMuted }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8, fontSize: 11, color: C.inkSoft }}>
                           {profileBuckets.map((b, i) => (
-                            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 999, background: (BUCKET_COLORS[b.type] || C.inkMuted) + '15', color: BUCKET_COLORS[b.type] || C.inkMuted, fontWeight: 600 }}>
                               <span style={{ width: 6, height: 6, borderRadius: 2, background: BUCKET_COLORS[b.type] || C.inkMuted }} />
                               {b.name} {Math.round(b.share * 100)}%
                             </span>
