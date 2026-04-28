@@ -4907,28 +4907,42 @@ export default function FinanceApp() {
         const spendTotal = spendItems.reduce((s, i) => s + Number(i.amount), 0);
         const max = Math.floor(spendTotal);
         const amt = Math.max(0, Math.min(max, Number(swapAmount) || 0));
-        // Consequence: pick a goal in flight to anchor the message.
-        // - If the goal already has a monthly contribution, show "X months sooner"
-        //   (the swap accelerates the existing pace).
-        // - If it has no monthly yet, show the new ETA from this swap alone —
-        //   never compare to a fake "1 R$/month" baseline (that produced
-        //   nonsense like "9679 months sooner").
-        // - Fallback: wealth/year.
-        const candidates = goals.filter(g => Number(g.target) > 0 && Number(g.current) < Number(g.target));
+        // Consequence: only name a goal if it's actually linked to a Save item
+        // that will receive a share of this swap. Otherwise the headline lies
+        // (the swap distributes proportionally across all Save items, so an
+        // unlinked goal doesn't actually advance at check-in). Compute the
+        // months claim against the goal's real share, not the full swap.
+        const saveTotalCurrent = saveItems.reduce((s, i) => s + Number(i.amount || 0), 0);
+        const linkedShareForGoal = (gId) => {
+          const linked = saveItems.find(i => i.goalId === gId);
+          if (!linked) return 0;
+          const weight = saveTotalCurrent > 0
+            ? (Number(linked.amount || 0) / saveTotalCurrent)
+            : (saveItems.length > 0 ? 1 / saveItems.length : 0);
+          return weight * amt;
+        };
+        const candidates = goals.filter(g =>
+          Number(g.target) > 0 &&
+          Number(g.current) < Number(g.target) &&
+          saveItems.some(i => i.goalId === g.id)
+        );
         const goal = candidates.find(g => g.deadline) || candidates[0];
         let consequenceText = sw.consequenceWealth(fmt(amt * 12, t));
         if (goal && amt > 0) {
-          const remaining = Math.max(0, Number(goal.target) - Number(goal.current));
-          const currentMonthly = Number(goal.monthly) || 0;
-          if (currentMonthly > 0) {
-            const newMonthly = currentMonthly + amt;
-            const oldMonths = Math.ceil(remaining / currentMonthly);
-            const newMonths = Math.ceil(remaining / newMonthly);
-            const saved = oldMonths - newMonths;
-            if (saved >= 1) consequenceText = sw.consequenceGoal(goal.name, saved);
-          } else {
-            const newMonths = Math.ceil(remaining / amt);
-            consequenceText = sw.consequenceNewEta(goal.name, newMonths);
+          const goalShare = linkedShareForGoal(goal.id);
+          if (goalShare > 0) {
+            const remaining = Math.max(0, Number(goal.target) - Number(goal.current));
+            const currentMonthly = Number(goal.monthly) || 0;
+            if (currentMonthly > 0) {
+              const newMonthly = currentMonthly + goalShare;
+              const oldMonths = Math.ceil(remaining / currentMonthly);
+              const newMonths = Math.ceil(remaining / newMonthly);
+              const saved = oldMonths - newMonths;
+              if (saved >= 1) consequenceText = sw.consequenceGoal(goal.name, saved);
+            } else {
+              const newMonths = Math.ceil(remaining / goalShare);
+              consequenceText = sw.consequenceNewEta(goal.name, newMonths);
+            }
           }
         }
         return (
