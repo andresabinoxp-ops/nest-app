@@ -302,6 +302,7 @@ const copy = {
       diff10y: (amt) => `In 10 years, +${amt} vs. current plan.`,
       ofTotal: 'of total',
       allocBalance: 'Allocation vs your profile',
+      diversifyHint: 'Spreading across types reduces the bumps.',
       target: 'target',
       onTrack: 'on track',
       over: (n) => `+${n}% over`,
@@ -339,6 +340,7 @@ const copy = {
       title: 'Forecast',
       sub: 'Your wealth, month by month.',
       empty: 'Add values to your wealth buckets to see a forecast.',
+      whyMatters: 'The magic of compound: money earning money over time.',
       yearCol: 'Year',
       wealthCol: 'Wealth',
       growthCol: 'Growth',
@@ -367,8 +369,45 @@ const copy = {
       reset: 'Reset all data',
       resetConfirm: 'This will clear everything. Are you sure?',
       version: 'Version 1.0',
+      help: 'Help',
     },
-    common: { edit: 'Edit', done: 'Done', cancel: 'Cancel', save: 'Save', delete: 'Remove', year: 'Y', today: 'today', daysAgo: (n) => `${n}d ago` },
+    tooltips: {
+      investorProfile: {
+        title: 'What\'s an investor profile?',
+        body: 'How much risk you\'re comfortable with. Lower-risk favours cash and bonds — slower growing, steadier. Higher-risk favours stocks — bumpier, but more potential over the long run.',
+      },
+      portfolioRisk: {
+        title: 'Portfolio risk',
+        body: 'How bumpy your wealth\'s ride could be. We blend the risk of each bucket weighted by its share. Cash sits at "Safe", stocks around "Aggressive", crypto at "Speculative". The tick on the bar is the target based on your investor profile.',
+      },
+      growth: {
+        title: 'Growth %',
+        body: 'The yearly price return you expect this asset to gain, separate from any dividends. For reference: a global stocks ETF has averaged ~7% real return over decades; cash ~1–4%; bonds 3–5%.',
+      },
+      dividend: {
+        title: 'Dividend %',
+        body: 'The yearly cash payout from this asset, separate from price growth. Reinvested dividends compound alongside the price, so 7% growth + 3% dividend behaves like ~10% total return.',
+      },
+      realNominal: {
+        title: 'Real vs Nominal',
+        body: '"Nominal" is what the number on your statement will literally read in the future. "Real" shows the same wealth in today\'s spending power, after inflation. Real is the more honest measure for long-term value.',
+      },
+      benchmark: {
+        title: 'What\'s a benchmark?',
+        body: 'A typical share of net income people in your country spend on this category, sourced from official statistics (ONS for UK, IBGE for BR). It\'s a sanity check, not a rule.',
+      },
+    },
+    faq: [
+      { q: 'What\'s the difference between Save, Bills, and Spend?', a: 'Save = money you\'re putting away for future-you (emergency, savings, investments). Bills = fixed monthly costs that don\'t change much (rent, utilities, council tax). Spend = the variable day-to-day stuff you can flex up or down (groceries, dining, hobbies). Putting Save first is the "pay yourself first" idea — saving comes off the top, not whatever\'s left.' },
+      { q: 'Why does the app suggest these amounts?', a: 'Smart Split asks 3 questions about your situation and produces shares that fit the typical pattern for your country, adjusted for whether you rent / own, have kids, etc. Templates apply named presets (Aggressive saver, Debt destroyer, etc.) without questions. Both distribute your income proportionally to recommended pillar shares.' },
+      { q: 'What do the benchmark percentages mean?', a: 'They\'re typical shares of net income people spend on each category, from official UK (ONS) and Brazilian (IBGE) statistics. Green/amber/red coloured bars tell you whether you\'re below, near, or above the typical band. Useful as a sanity check — not a rule.' },
+      { q: 'What\'s compound growth?', a: 'Earnings on your earnings. If your money grows 7% a year, the gain itself starts earning 7% next year. Over decades it\'s the single biggest driver of wealth — far more than how much you save in a single month.' },
+      { q: 'What\'s the difference between Wealth and Goals?', a: 'Wealth tracks what you have right now (account balances, investments). Goals tracks what you\'re working toward (a house deposit, a holiday, debt-free). Money flows from your monthly Save pillar into Wealth buckets, and contributions to Goals come from there too.' },
+      { q: 'Why is my plan locked behind a confirmation when I tap a template?', a: 'Templates redistribute your existing item amounts. To prevent a misclick from wiping your careful tuning, the app asks before applying when you already have a plan in place.' },
+      { q: 'Does any of this leave my phone?', a: 'No. Everything is stored locally on your device. There\'s no account, no server, no tracking. The trade-off is: if you delete the app or lose your phone, the data goes with it.' },
+      { q: 'Why "monthly" everywhere?', a: 'Most household money runs on a monthly cycle — salary, rent, bills. Planning monthly matches reality and keeps the discipline tight without being a daily chore. Hence the tagline: "Plan. Grow. Reflect monthly. No daily tracking."' },
+    ],
+    common: { edit: 'Edit', done: 'Done', cancel: 'Cancel', save: 'Save', delete: 'Remove', year: 'Y', today: 'today', daysAgo: (n) => `${n}d ago`, gotIt: 'Got it' },
   },
   pt: {
     locale: 'pt-BR', currency: 'BRL', currencySymbol: 'R$', country: 'br',
@@ -661,6 +700,7 @@ const copy = {
       diff10y: (amt) => `Em 10 anos, +${amt} vs. plano atual.`,
       ofTotal: 'do total',
       allocBalance: 'Alocação vs seu perfil',
+      diversifyHint: 'Espalhar entre tipos reduz as oscilações.',
       target: 'alvo',
       onTrack: 'no caminho',
       over: (n) => `+${n}% acima`,
@@ -698,6 +738,7 @@ const copy = {
       title: 'Previsão',
       sub: 'Seu patrimônio, mês a mês.',
       empty: 'Adicione valores aos seus baldes pra ver a previsão.',
+      whyMatters: 'A mágica dos juros compostos: dinheiro rendendo sobre dinheiro com o tempo.',
       yearCol: 'Ano',
       wealthCol: 'Patrimônio',
       growthCol: 'Crescimento',
@@ -726,8 +767,45 @@ const copy = {
       reset: 'Apagar todos os dados',
       resetConfirm: 'Isso vai apagar tudo. Tem certeza?',
       version: 'Versão 1.0',
+      help: 'Ajuda',
     },
-    common: { edit: 'Editar', done: 'Pronto', cancel: 'Cancelar', save: 'Salvar', delete: 'Remover', year: 'A', today: 'hoje', daysAgo: (n) => `há ${n}d` },
+    tooltips: {
+      investorProfile: {
+        title: 'O que é perfil de investidor?',
+        body: 'Quanto risco você aceita. Perfis mais conservadores priorizam reserva e renda fixa — crescem devagar, mas são mais estáveis. Perfis mais agressivos priorizam ações — oscilam mais, mas têm mais potencial no longo prazo.',
+      },
+      portfolioRisk: {
+        title: 'Risco da carteira',
+        body: 'Quão volátil é o caminho do seu patrimônio. Misturamos o risco de cada balde ponderado pela participação. Reserva fica em "Seguro", ações perto de "Agressivo", cripto em "Especulativo". O traço na barra é o alvo do seu perfil de investidor.',
+      },
+      growth: {
+        title: 'Crescimento %',
+        body: 'O retorno anual de preço esperado pra esse ativo, sem contar dividendos. Pra referência: ETFs globais de ações têm rendido ~7% reais ao ano em décadas; reserva ~1–4%; renda fixa 3–5%.',
+      },
+      dividend: {
+        title: 'Dividendo %',
+        body: 'O pagamento anual em dinheiro do ativo, separado do crescimento de preço. Dividendos reinvestidos compõem junto com o preço, então 7% de crescimento + 3% de dividendo se comporta como ~10% no total.',
+      },
+      realNominal: {
+        title: 'Real vs Nominal',
+        body: '"Nominal" mostra o número que vai aparecer no extrato no futuro. "Real" mostra o mesmo patrimônio no poder de compra de hoje, descontando inflação. Real é a medida mais honesta pra longo prazo.',
+      },
+      benchmark: {
+        title: 'O que é um benchmark?',
+        body: 'A fatia típica da renda líquida que pessoas no seu país gastam em cada categoria, vinda de estatísticas oficiais (ONS no UK, IBGE no Brasil). É um sanity check, não uma regra.',
+      },
+    },
+    faq: [
+      { q: 'Qual a diferença entre Guardar, Contas e Gastos?', a: 'Guardar = dinheiro que você guarda pro seu eu futuro (reserva, poupança, investimentos). Contas = despesas mensais fixas que pouco mudam (aluguel, luz, condomínio). Gastos = as variáveis do dia a dia que você pode flexibilizar (mercado, restaurantes, hobbies). Colocar Guardar primeiro é a ideia "pague-se primeiro" — guardar vem do topo, não do que sobra.' },
+      { q: 'Por que o app sugere esses valores?', a: 'O Plano Inteligente faz 3 perguntas sobre você e produz proporções típicas pro seu país, ajustadas se você aluga / é dono, tem filhos, etc. Modelos aplicam presets nomeados (Investidor agressivo, Quitar dívidas, etc.) sem perguntas. Ambos distribuem sua renda nas proporções recomendadas.' },
+      { q: 'O que significam as porcentagens de benchmark?', a: 'São fatias típicas da renda líquida que pessoas gastam em cada categoria, segundo estatísticas oficiais do UK (ONS) e do Brasil (IBGE). Barras coloridas verde/amarelo/vermelho indicam se você está abaixo, perto ou acima do típico. Sanity check, não regra.' },
+      { q: 'O que é juros compostos?', a: 'Rendimento sobre rendimento. Se seu dinheiro cresce 7% ao ano, o ganho começa a render 7% no ano seguinte. Em décadas é o maior motor de patrimônio — muito mais do que quanto você guarda em um único mês.' },
+      { q: 'Qual a diferença entre Patrimônio e Metas?', a: 'Patrimônio acompanha o que você tem agora (saldos, investimentos). Metas acompanha o que você está conquistando (entrada da casa, viagem, ficar sem dívida). O dinheiro flui do pilar Guardar mensal pro Patrimônio, e contribuições pras Metas saem dali também.' },
+      { q: 'Por que o app pede confirmação ao tocar em um modelo?', a: 'Modelos redistribuem os valores dos seus itens. Pra evitar que um toque errado apague seu ajuste cuidadoso, o app pergunta antes de aplicar quando você já tem um plano.' },
+      { q: 'Algo disso sai do meu celular?', a: 'Não. Tudo fica armazenado localmente no aparelho. Sem cadastro, sem servidor, sem rastreio. O lado ruim: se você apagar o app ou perder o celular, os dados vão junto.' },
+      { q: 'Por que tudo é "mensal"?', a: 'A maior parte do dinheiro doméstico segue um ciclo mensal — salário, aluguel, contas. Planejar mensalmente bate com a realidade e mantém a disciplina firme sem virar uma tarefa diária. Daí o lema: "Plane. Cresça. Reflita mensalmente. Sem rastreio diário."' },
+    ],
+    common: { edit: 'Editar', done: 'Pronto', cancel: 'Cancelar', save: 'Salvar', delete: 'Remover', year: 'A', today: 'hoje', daysAgo: (n) => `há ${n}d`, gotIt: 'Entendi' },
   },
 };
 
@@ -1431,6 +1509,8 @@ export default function FinanceApp() {
   const [txGoalMode, setTxGoalMode] = useState('deposit');
   const [txGoalAmount, setTxGoalAmount] = useState('');
   const [confirmRemoveGoalEntry, setConfirmRemoveGoalEntry] = useState(null); // { goalId, idx }
+  const [openInfo, setOpenInfo] = useState(null); // tooltip key
+  const [openFaq, setOpenFaq] = useState(null); // expanded FAQ index
   const [scenarioExtra, setScenarioExtra] = useState(0);
 
   // Smart split flow — don't persist
@@ -1503,8 +1583,8 @@ export default function FinanceApp() {
         out.push({
           icon: 'alert',
           text: lang === 'en'
-            ? `${pct}% of your wealth is in ${biggest.name}. Worth considering diversification.`
-            : `${pct}% do seu patrimônio está em ${biggest.name}. Vale pensar em diversificar.`,
+            ? `Most of your money (${pct}%) sits in ${biggest.name}. Spreading it across types softens the bumps when markets move.`
+            : `A maior parte do seu dinheiro (${pct}%) está em ${biggest.name}. Espalhar entre tipos suaviza as oscilações quando o mercado mexe.`,
           action: { tab: 'wealth', label: t.home.insightActions.rebalance },
         });
       }
@@ -1516,8 +1596,8 @@ export default function FinanceApp() {
         out.push({
           icon: 'trending',
           text: lang === 'en'
-            ? `At this pace, you reach ${fmtShort(in10, t)} in 10 years.`
-            : `Nesse ritmo, você chega em ${fmtShort(in10, t)} em 10 anos.`,
+            ? `Stay the course and you'll be at ~${fmtShort(in10, t)} in 10 years — that's the magic of compound growth.`
+            : `Mantendo o ritmo, você chega em ~${fmtShort(in10, t)} em 10 anos — essa é a mágica dos juros compostos.`,
           action: { tab: 'forecast', label: t.home.insightActions.view },
         });
       }
@@ -1531,8 +1611,8 @@ export default function FinanceApp() {
           out.push({
             icon: 'goal',
             text: lang === 'en'
-              ? `"${g.name}" is ${pct}% complete. About ${monthsLeft} months to go.`
-              : `"${g.name}" está ${pct}% completa. Faltam uns ${monthsLeft} meses.`,
+              ? `You're ${pct}% of the way to "${g.name}" — about ${monthsLeft} months to go. Keep the momentum.`
+              : `Você está ${pct}% do caminho até "${g.name}" — faltam uns ${monthsLeft} meses. Mantenha o ritmo.`,
             action: { tab: 'goals', label: t.home.insightActions.view },
           });
         }
@@ -1977,7 +2057,7 @@ export default function FinanceApp() {
       if (onboardStep === 1) return { title: t.onboarding.country.title, bold: t.onboarding.country.titleBold, sub: t.onboarding.country.sub };
       if (onboardStep === 2) return { title: t.onboarding.income.title, bold: t.onboarding.income.titleBold, sub: t.onboarding.income.sub };
       if (onboardStep === 3) return { title: t.onboarding.goal.title, bold: t.onboarding.goal.titleBold, sub: null };
-      if (onboardStep === 4) return { title: t.onboarding.profile.title, bold: t.onboarding.profile.titleBold, sub: t.onboarding.profile.sub, small: true };
+      if (onboardStep === 4) return { title: t.onboarding.profile.title, bold: t.onboarding.profile.titleBold, sub: t.onboarding.profile.sub, small: true, infoKey: 'investorProfile' };
       if (onboardStep === 5) return { title: t.onboarding.saveFor.title, bold: t.onboarding.saveFor.titleBold, sub: t.onboarding.saveFor.sub };
       if (onboardStep === 6) return { title: t.onboarding.summary.title, bold: '', sub: t.onboarding.summary.sub };
       return null;
@@ -1998,6 +2078,7 @@ export default function FinanceApp() {
                 )}
                 <h1 style={{ ...s.onboardTitle, fontSize: stickyHeader.small ? 26 : 28, marginBottom: stickyHeader.sub ? 6 : 0, textAlign: 'center' }}>
                   {stickyHeader.title} <span style={s.onboardTitleBold}>{stickyHeader.bold}</span>
+                  {stickyHeader.infoKey && <Info k={stickyHeader.infoKey} />}
                 </h1>
                 {stickyHeader.sub && <p style={{ ...s.onboardSub, marginBottom: 0, textAlign: 'center' }}>{stickyHeader.sub}</p>}
               </>
@@ -2384,6 +2465,17 @@ export default function FinanceApp() {
     setConfirmRemoveGoalEntry(null);
   };
   const removeGoal = (id) => { setGoals(goals.filter(g => g.id !== id)); if (editingGoalId === id) setEditingGoalId(null); if (txGoalId === id) setTxGoalId(null); };
+
+  // Inline (i) icon that opens a plain-English glossary sheet for the given key.
+  const Info = ({ k }) => (
+    <button
+      onClick={(e) => { e.stopPropagation(); setOpenInfo(k); }}
+      style={{ background: 'transparent', border: 'none', padding: 0, marginLeft: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle' }}
+      aria-label="More info"
+    >
+      <span style={{ width: 14, height: 14, borderRadius: 7, border: `1.5px solid ${C.inkMuted}`, color: C.inkMuted, fontSize: 9, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'serif', lineHeight: 1 }}>i</span>
+    </button>
+  );
   const addGoal = () => {
     const newGoal = { id: Math.random().toString(36), name: t.goals.new, icon: 'circle', type: 'savings', target: 1000, current: 0, monthly: 0 };
     setGoals([...goals, newGoal]);
@@ -3494,12 +3586,13 @@ export default function FinanceApp() {
               const riskLabelIdx = Math.min(4, Math.max(0, Math.round(currentRisk) - 1));
               return (
                 <div style={s.card}>
-                  <div style={{ ...s.cardLabel, marginBottom: 14 }}>{t.wealth.allocBalance}</div>
+                  <div style={{ ...s.cardLabel, marginBottom: 4 }}>{t.wealth.allocBalance}</div>
+                  <div style={{ fontSize: 11, color: C.inkMuted, fontStyle: 'italic', marginBottom: 14 }}>{t.wealth.diversifyHint}</div>
 
                   {currentRisk > 0 && (
                     <div style={{ marginBottom: 16, paddingBottom: 14, borderBottom: `1px solid ${C.lineSoft}` }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-                        <span style={{ fontSize: 11, color: C.inkMuted, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{t.wealth.riskLabel}</span>
+                        <span style={{ fontSize: 11, color: C.inkMuted, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{t.wealth.riskLabel}<Info k="portfolioRisk" /></span>
                         <span style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{t.wealth.riskScale[riskLabelIdx]}</span>
                       </div>
                       <div style={{ position: 'relative', height: 8, borderRadius: 4, background: `linear-gradient(to right, ${C.accent}, ${C.yellow}, ${C.red || '#E06B53'})` }}>
@@ -3668,11 +3761,11 @@ export default function FinanceApp() {
                         </div>
                         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.growth} %</div>
+                            <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.growth} %<Info k="growth" /></div>
                             <input type="number" inputMode="decimal" step="0.1" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={b.growth || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'growth', e.target.value)} />
                           </div>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.dividend} %</div>
+                            <div style={{ fontSize: 10, color: C.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>{t.wealth.dividend} %<Info k="dividend" /></div>
                             <input type="number" inputMode="decimal" step="0.1" style={{ ...s.inputNum, width: '100%', textAlign: 'left' }} value={b.dividend || ''} placeholder="0" onChange={(e) => updateBucket(b.id, 'dividend', e.target.value)} />
                           </div>
                         </div>
@@ -3821,6 +3914,7 @@ export default function FinanceApp() {
             <div style={{ marginBottom: 20 }}>
               <h1 style={s.h1}>{t.forecast.title}</h1>
               <div style={s.sub}>{t.forecast.sub}</div>
+              <div style={{ fontSize: 12, color: C.inkMuted, fontStyle: 'italic', marginTop: 4 }}>{t.forecast.whyMatters}</div>
             </div>
 
             {totalWealth === 0 ? (
@@ -3847,7 +3941,7 @@ export default function FinanceApp() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.lineSoft}` }}>
                     <div>
-                      <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600 }}>{realMode ? t.forecast.real : t.forecast.nominal}</div>
+                      <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, display: 'flex', alignItems: 'center' }}>{realMode ? t.forecast.real : t.forecast.nominal}<Info k="realNominal" /></div>
                       {realMode && <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 2 }}>{t.forecast.realHint(COUNTRY_INFLATION[country] || 2.5)}</div>}
                     </div>
                     <div style={{ display: 'flex', gap: 3, background: C.surfaceAlt, padding: 3, borderRadius: 999 }}>
@@ -4101,10 +4195,42 @@ export default function FinanceApp() {
                 <ChevronRight size={14} color={C.inkMuted} />
               </div>
             </div>
+
+            {/* Help / FAQ */}
+            <div style={s.card}>
+              <div style={{ ...s.cardLabel, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={11} /> {t.profile.help}
+              </div>
+              {t.faq.map((item, i) => {
+                const isOpen = openFaq === i;
+                return (
+                  <div key={i} style={{ borderBottom: i < t.faq.length - 1 ? `1px solid ${C.lineSoft}` : 'none' }}>
+                    <button onClick={() => setOpenFaq(isOpen ? null : i)} style={{ width: '100%', textAlign: 'left', background: 'transparent', border: 'none', padding: '12px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontFamily: fontSans }}>
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: C.ink, lineHeight: 1.4 }}>{item.q}</span>
+                      <ChevronRight size={14} color={C.inkMuted} style={{ transform: isOpen ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.2s', flexShrink: 0 }} />
+                    </button>
+                    {isOpen && (
+                      <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.55, padding: '0 0 14px' }}>{item.a}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </>
         )}
       </div>
 
+      {/* Glossary tooltip sheet — global, can open from any tab */}
+      {openInfo && t.tooltips[openInfo] && (
+        <div onClick={() => setOpenInfo(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)' }}>
+            <div style={{ width: 36, height: 4, background: C.line, borderRadius: 2, margin: '0 auto 14px' }} />
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 8 }}>{t.tooltips[openInfo].title}</div>
+            <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55 }}>{t.tooltips[openInfo].body}</div>
+            <button onClick={() => setOpenInfo(null)} style={{ marginTop: 16, width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: C.accent, color: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 14, fontWeight: 700 }}>{t.common.gotIt}</button>
+          </div>
+        </div>
+      )}
       {saveToast && (
         <div style={{ position: 'fixed', left: 14, right: 14, maxWidth: 440, margin: '0 auto', bottom: 'calc(82px + env(safe-area-inset-bottom))', zIndex: 25, background: C.ink, color: C.surface, padding: '12px 16px', borderRadius: 14, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', display: 'flex', alignItems: 'center', gap: 10, animation: 'fadeUp 0.3s ease-out' }}>
           <Check size={16} color={C.accent} strokeWidth={3} />
