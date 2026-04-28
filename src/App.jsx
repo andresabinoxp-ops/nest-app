@@ -1887,11 +1887,13 @@ export default function FinanceApp() {
     };
 
     const stickyHeader = (() => {
+      if (onboardStep === 0) return { title: t.onboarding.welcome.title, bold: t.onboarding.welcome.titleBold, sub: t.onboarding.welcome.sub, eyebrow: t.onboarding.welcome.eyebrow };
       if (onboardStep === 1) return { title: t.onboarding.country.title, bold: t.onboarding.country.titleBold, sub: t.onboarding.country.sub };
       if (onboardStep === 2) return { title: t.onboarding.income.title, bold: t.onboarding.income.titleBold, sub: t.onboarding.income.sub };
       if (onboardStep === 3) return { title: t.onboarding.goal.title, bold: t.onboarding.goal.titleBold, sub: null };
       if (onboardStep === 4) return { title: t.onboarding.profile.title, bold: t.onboarding.profile.titleBold, sub: t.onboarding.profile.sub, small: true };
       if (onboardStep === 5) return { title: t.onboarding.saveFor.title, bold: t.onboarding.saveFor.titleBold, sub: t.onboarding.saveFor.sub };
+      if (onboardStep === 6) return { title: t.onboarding.summary.title, bold: '', sub: t.onboarding.summary.sub };
       return null;
     })();
 
@@ -1904,28 +1906,19 @@ export default function FinanceApp() {
             </div>
             {stickyHeader && (
               <>
-                <h1 style={{ ...s.onboardTitle, fontSize: stickyHeader.small ? 26 : 32, marginBottom: stickyHeader.sub ? 6 : 0 }}>
+                {stickyHeader.eyebrow && (
+                  <div style={{ ...s.onboardEyebrow, textAlign: 'center', marginBottom: 8 }}>{stickyHeader.eyebrow}</div>
+                )}
+                <h1 style={{ ...s.onboardTitle, fontSize: stickyHeader.small ? 26 : 28, marginBottom: stickyHeader.sub ? 6 : 0, textAlign: 'center' }}>
                   {stickyHeader.title} <span style={s.onboardTitleBold}>{stickyHeader.bold}</span>
                 </h1>
-                {stickyHeader.sub && <p style={{ ...s.onboardSub, marginBottom: 0 }}>{stickyHeader.sub}</p>}
+                {stickyHeader.sub && <p style={{ ...s.onboardSub, marginBottom: 0, textAlign: 'center' }}>{stickyHeader.sub}</p>}
               </>
             )}
           </div>
 
           {onboardStep === 0 && (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 18 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 11, background: C.accent, color: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18 }}>N</div>
-                <span style={{ fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>Nest</span>
-              </div>
-              <div style={s.onboardEyebrow}>{t.onboarding.welcome.eyebrow}</div>
-              <h1 style={{ ...s.onboardTitle, textAlign: 'center', fontSize: 32, marginTop: 12 }}>
-                {t.onboarding.welcome.title}<br />
-                <span style={s.onboardTitleBold}>{t.onboarding.welcome.titleBold}</span>
-              </h1>
-              <p style={{ ...s.onboardSub, textAlign: 'center', maxWidth: 360, margin: '0 auto 24px' }}>
-                {t.onboarding.welcome.sub}
-              </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
                   { key: 'plan', icon: Wallet, color: '#3B82F6' },
@@ -2070,10 +2063,6 @@ export default function FinanceApp() {
                 <div style={{ width: 56, height: 56, borderRadius: 28, background: C.accent, color: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '8px auto 16px' }}>
                   <Check size={26} strokeWidth={3} />
                 </div>
-                <h1 style={{ ...s.onboardTitle, textAlign: 'center', fontSize: 30 }}>
-                  {t.onboarding.summary.title}
-                </h1>
-                <p style={{ ...s.onboardSub, textAlign: 'center' }}>{t.onboarding.summary.sub}</p>
                 <div style={{ background: C.surface, border: `1px solid ${C.lineSoft}`, borderRadius: 14, padding: 4, marginTop: 4 }}>
                   {rows.map((r, i) => (
                     <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, padding: '12px 14px', borderBottom: i < rows.length - 1 ? `1px solid ${C.lineSoft}` : 'none' }}>
