@@ -1897,8 +1897,9 @@ export default function FinanceApp() {
       return null;
     })();
 
+    const fixedPage = onboardStep !== 5;
     return (
-      <div style={s.app}>
+      <div style={{ ...s.app, height: '100dvh', overflow: fixedPage ? 'hidden' : 'auto' }}>
         <div style={{ ...s.onboardMain, paddingBottom: onboardStep === 5 ? 340 : 200 }}>
           <div style={s.onboardStickyHeader}>
             <div style={{ ...s.dots, marginBottom: stickyHeader ? 14 : 28 }}>
