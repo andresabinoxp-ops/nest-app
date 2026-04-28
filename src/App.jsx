@@ -700,36 +700,36 @@ const PROFILE_BUCKETS = {
 // ============================================================
 const DEFAULT_ITEMS = {
   en: [
-    { pillar: 'save', name: 'Emergency fund', icon: 'shield', benchmarkKey: 'emergency' },
-    { pillar: 'save', name: 'Savings', icon: 'piggy', benchmarkKey: 'savings' },
-    { pillar: 'save', name: 'Investments', icon: 'line', benchmarkKey: 'investments' },
-    { pillar: 'bills', name: 'Rent / Mortgage', icon: 'house', benchmarkKey: 'housing' },
-    { pillar: 'bills', name: 'Council tax', icon: 'house', benchmarkKey: null },
-    { pillar: 'bills', name: 'Electricity & gas', icon: 'line', benchmarkKey: 'utilities' },
-    { pillar: 'bills', name: 'Water', icon: 'line', benchmarkKey: null },
-    { pillar: 'bills', name: 'Internet', icon: 'line', benchmarkKey: null },
-    { pillar: 'bills', name: 'Mobile', icon: 'line', benchmarkKey: null },
-    { pillar: 'spend', name: 'Groceries', icon: 'bag', benchmarkKey: 'groceries' },
-    { pillar: 'spend', name: 'Transport', icon: 'car', benchmarkKey: 'transport' },
-    { pillar: 'spend', name: 'Dining out', icon: 'gem', benchmarkKey: 'lifestyle' },
-    { pillar: 'spend', name: 'Personal cash', icon: 'gem', benchmarkKey: null },
+    { pillar: 'save', name: 'Emergency fund', icon: 'shield', benchmarkKey: 'emergency', typicalShare: 5 },
+    { pillar: 'save', name: 'Savings', icon: 'piggy', benchmarkKey: 'savings', typicalShare: 5 },
+    { pillar: 'save', name: 'Investments', icon: 'line', benchmarkKey: 'investments', typicalShare: 10 },
+    { pillar: 'bills', name: 'Rent / Mortgage', icon: 'house', benchmarkKey: 'housing', typicalShare: 25 },
+    { pillar: 'bills', name: 'Council tax', icon: 'house', benchmarkKey: null, typicalShare: 4 },
+    { pillar: 'bills', name: 'Electricity & gas', icon: 'line', benchmarkKey: 'utilities', typicalShare: 4 },
+    { pillar: 'bills', name: 'Water', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+    { pillar: 'bills', name: 'Internet', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+    { pillar: 'bills', name: 'Mobile', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+    { pillar: 'spend', name: 'Groceries', icon: 'bag', benchmarkKey: 'groceries', typicalShare: 12 },
+    { pillar: 'spend', name: 'Transport', icon: 'car', benchmarkKey: 'transport', typicalShare: 10 },
+    { pillar: 'spend', name: 'Dining out', icon: 'gem', benchmarkKey: 'lifestyle', typicalShare: 5 },
+    { pillar: 'spend', name: 'Personal cash', icon: 'gem', benchmarkKey: null, typicalShare: 4 },
   ],
   pt: [
-    { pillar: 'save', name: 'Reserva de emergência', icon: 'shield', benchmarkKey: 'emergency' },
-    { pillar: 'save', name: 'Poupança', icon: 'piggy', benchmarkKey: 'savings' },
-    { pillar: 'save', name: 'Investimentos', icon: 'line', benchmarkKey: 'investments' },
-    { pillar: 'bills', name: 'Aluguel / Financiamento', icon: 'house', benchmarkKey: 'housing' },
-    { pillar: 'bills', name: 'Condomínio', icon: 'house', benchmarkKey: null },
-    { pillar: 'bills', name: 'Luz', icon: 'line', benchmarkKey: 'utilities' },
-    { pillar: 'bills', name: 'Água', icon: 'line', benchmarkKey: null },
-    { pillar: 'bills', name: 'Gás', icon: 'line', benchmarkKey: null },
-    { pillar: 'bills', name: 'Internet', icon: 'line', benchmarkKey: null },
-    { pillar: 'bills', name: 'Celular', icon: 'line', benchmarkKey: null },
-    { pillar: 'bills', name: 'Plano de saúde', icon: 'shield', benchmarkKey: null },
-    { pillar: 'spend', name: 'Mercado', icon: 'bag', benchmarkKey: 'groceries' },
-    { pillar: 'spend', name: 'Transporte', icon: 'car', benchmarkKey: 'transport' },
-    { pillar: 'spend', name: 'Restaurantes', icon: 'gem', benchmarkKey: 'lifestyle' },
-    { pillar: 'spend', name: 'Dinheiro pessoal', icon: 'gem', benchmarkKey: null },
+    { pillar: 'save', name: 'Reserva de emergência', icon: 'shield', benchmarkKey: 'emergency', typicalShare: 5 },
+    { pillar: 'save', name: 'Poupança', icon: 'piggy', benchmarkKey: 'savings', typicalShare: 5 },
+    { pillar: 'save', name: 'Investimentos', icon: 'line', benchmarkKey: 'investments', typicalShare: 8 },
+    { pillar: 'bills', name: 'Aluguel / Financiamento', icon: 'house', benchmarkKey: 'housing', typicalShare: 25 },
+    { pillar: 'bills', name: 'Condomínio', icon: 'house', benchmarkKey: null, typicalShare: 5 },
+    { pillar: 'bills', name: 'Luz', icon: 'line', benchmarkKey: 'utilities', typicalShare: 3 },
+    { pillar: 'bills', name: 'Água', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+    { pillar: 'bills', name: 'Gás', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+    { pillar: 'bills', name: 'Internet', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+    { pillar: 'bills', name: 'Celular', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+    { pillar: 'bills', name: 'Plano de saúde', icon: 'shield', benchmarkKey: null, typicalShare: 5 },
+    { pillar: 'spend', name: 'Mercado', icon: 'bag', benchmarkKey: 'groceries', typicalShare: 15 },
+    { pillar: 'spend', name: 'Transporte', icon: 'car', benchmarkKey: 'transport', typicalShare: 8 },
+    { pillar: 'spend', name: 'Restaurantes', icon: 'gem', benchmarkKey: 'lifestyle', typicalShare: 5 },
+    { pillar: 'spend', name: 'Dinheiro pessoal', icon: 'gem', benchmarkKey: null, typicalShare: 4 },
   ],
 };
 
@@ -773,76 +773,76 @@ const TEMPLATES_PT = [
 const STARTER_ITEMS = {
   en: {
     save: [
-      { name: 'Emergency fund', icon: 'shield', benchmarkKey: 'emergency' },
-      { name: 'Savings', icon: 'piggy', benchmarkKey: 'savings' },
-      { name: 'Investments', icon: 'line', benchmarkKey: 'investments' },
-      { name: 'Pension', icon: 'piggy', benchmarkKey: null },
+      { name: 'Emergency fund', icon: 'shield', benchmarkKey: 'emergency', typicalShare: 5 },
+      { name: 'Savings', icon: 'piggy', benchmarkKey: 'savings', typicalShare: 5 },
+      { name: 'Investments', icon: 'line', benchmarkKey: 'investments', typicalShare: 10 },
+      { name: 'Pension', icon: 'piggy', benchmarkKey: null, typicalShare: 8 },
     ],
     bills: [
-      { name: 'Rent / Mortgage', icon: 'house', benchmarkKey: 'housing' },
-      { name: 'Council tax', icon: 'house', benchmarkKey: null },
-      { name: 'Electricity & gas', icon: 'line', benchmarkKey: 'utilities' },
-      { name: 'Water', icon: 'line', benchmarkKey: null },
-      { name: 'Internet', icon: 'line', benchmarkKey: null },
-      { name: 'Mobile', icon: 'line', benchmarkKey: null },
-      { name: 'TV licence', icon: 'line', benchmarkKey: null },
-      { name: 'Streaming', icon: 'line', benchmarkKey: null },
-      { name: 'Insurance', icon: 'shield', benchmarkKey: null },
-      { name: 'Gym', icon: 'gem', benchmarkKey: null },
+      { name: 'Rent / Mortgage', icon: 'house', benchmarkKey: 'housing', typicalShare: 25 },
+      { name: 'Council tax', icon: 'house', benchmarkKey: null, typicalShare: 4 },
+      { name: 'Electricity & gas', icon: 'line', benchmarkKey: 'utilities', typicalShare: 4 },
+      { name: 'Water', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+      { name: 'Internet', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+      { name: 'Mobile', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+      { name: 'TV licence', icon: 'line', benchmarkKey: null, typicalShare: 0.5 },
+      { name: 'Streaming', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+      { name: 'Insurance', icon: 'shield', benchmarkKey: null, typicalShare: 4 },
+      { name: 'Gym', icon: 'gem', benchmarkKey: null, typicalShare: 2 },
     ],
     spend: [
-      { name: 'Groceries', icon: 'bag', benchmarkKey: 'groceries' },
-      { name: 'Transport', icon: 'car', benchmarkKey: 'transport' },
-      { name: 'Dining out', icon: 'gem', benchmarkKey: 'lifestyle' },
-      { name: 'Clothes', icon: 'bag', benchmarkKey: null },
-      { name: 'Personal care', icon: 'gem', benchmarkKey: null },
-      { name: 'Hobbies', icon: 'gem', benchmarkKey: 'lifestyle' },
-      { name: 'Travel', icon: 'gem', benchmarkKey: null },
-      { name: 'Personal cash', icon: 'gem', benchmarkKey: null },
+      { name: 'Groceries', icon: 'bag', benchmarkKey: 'groceries', typicalShare: 12 },
+      { name: 'Transport', icon: 'car', benchmarkKey: 'transport', typicalShare: 10 },
+      { name: 'Dining out', icon: 'gem', benchmarkKey: 'lifestyle', typicalShare: 5 },
+      { name: 'Clothes', icon: 'bag', benchmarkKey: null, typicalShare: 3 },
+      { name: 'Personal care', icon: 'gem', benchmarkKey: null, typicalShare: 2 },
+      { name: 'Hobbies', icon: 'gem', benchmarkKey: 'lifestyle', typicalShare: 4 },
+      { name: 'Travel', icon: 'gem', benchmarkKey: null, typicalShare: 5 },
+      { name: 'Personal cash', icon: 'gem', benchmarkKey: null, typicalShare: 4 },
     ],
     debt: [
-      { name: 'Credit card', icon: 'card', benchmarkKey: 'debt' },
-      { name: 'Loan', icon: 'card', benchmarkKey: 'debt' },
-      { name: 'Student loan', icon: 'card', benchmarkKey: 'debt' },
+      { name: 'Credit card', icon: 'card', benchmarkKey: 'debt', typicalShare: 5 },
+      { name: 'Loan', icon: 'card', benchmarkKey: 'debt', typicalShare: 5 },
+      { name: 'Student loan', icon: 'card', benchmarkKey: 'debt', typicalShare: 5 },
     ],
   },
   pt: {
     save: [
-      { name: 'Reserva de emergência', icon: 'shield', benchmarkKey: 'emergency' },
-      { name: 'Poupança', icon: 'piggy', benchmarkKey: 'savings' },
-      { name: 'Investimentos', icon: 'line', benchmarkKey: 'investments' },
-      { name: 'Previdência', icon: 'piggy', benchmarkKey: null },
+      { name: 'Reserva de emergência', icon: 'shield', benchmarkKey: 'emergency', typicalShare: 5 },
+      { name: 'Poupança', icon: 'piggy', benchmarkKey: 'savings', typicalShare: 5 },
+      { name: 'Investimentos', icon: 'line', benchmarkKey: 'investments', typicalShare: 8 },
+      { name: 'Previdência', icon: 'piggy', benchmarkKey: null, typicalShare: 6 },
     ],
     bills: [
-      { name: 'Aluguel / Financiamento', icon: 'house', benchmarkKey: 'housing' },
-      { name: 'Condomínio', icon: 'house', benchmarkKey: null },
-      { name: 'IPTU', icon: 'house', benchmarkKey: null },
-      { name: 'Luz', icon: 'line', benchmarkKey: 'utilities' },
-      { name: 'Água', icon: 'line', benchmarkKey: null },
-      { name: 'Gás', icon: 'line', benchmarkKey: null },
-      { name: 'Internet', icon: 'line', benchmarkKey: null },
-      { name: 'Celular', icon: 'line', benchmarkKey: null },
-      { name: 'Streaming', icon: 'line', benchmarkKey: null },
-      { name: 'Plano de saúde', icon: 'shield', benchmarkKey: null },
-      { name: 'Seguros', icon: 'shield', benchmarkKey: null },
-      { name: 'IPVA', icon: 'car', benchmarkKey: null },
-      { name: 'Academia', icon: 'gem', benchmarkKey: null },
+      { name: 'Aluguel / Financiamento', icon: 'house', benchmarkKey: 'housing', typicalShare: 25 },
+      { name: 'Condomínio', icon: 'house', benchmarkKey: null, typicalShare: 5 },
+      { name: 'IPTU', icon: 'house', benchmarkKey: null, typicalShare: 2 },
+      { name: 'Luz', icon: 'line', benchmarkKey: 'utilities', typicalShare: 3 },
+      { name: 'Água', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+      { name: 'Gás', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+      { name: 'Internet', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+      { name: 'Celular', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+      { name: 'Streaming', icon: 'line', benchmarkKey: null, typicalShare: 1 },
+      { name: 'Plano de saúde', icon: 'shield', benchmarkKey: null, typicalShare: 5 },
+      { name: 'Seguros', icon: 'shield', benchmarkKey: null, typicalShare: 3 },
+      { name: 'IPVA', icon: 'car', benchmarkKey: null, typicalShare: 1 },
+      { name: 'Academia', icon: 'gem', benchmarkKey: null, typicalShare: 2 },
     ],
     spend: [
-      { name: 'Mercado', icon: 'bag', benchmarkKey: 'groceries' },
-      { name: 'Transporte', icon: 'car', benchmarkKey: 'transport' },
-      { name: 'Combustível', icon: 'car', benchmarkKey: 'transport' },
-      { name: 'Restaurantes', icon: 'gem', benchmarkKey: 'lifestyle' },
-      { name: 'Roupas', icon: 'bag', benchmarkKey: null },
-      { name: 'Cuidados pessoais', icon: 'gem', benchmarkKey: null },
-      { name: 'Hobbies', icon: 'gem', benchmarkKey: 'lifestyle' },
-      { name: 'Viagens', icon: 'gem', benchmarkKey: null },
-      { name: 'Dinheiro pessoal', icon: 'gem', benchmarkKey: null },
+      { name: 'Mercado', icon: 'bag', benchmarkKey: 'groceries', typicalShare: 15 },
+      { name: 'Transporte', icon: 'car', benchmarkKey: 'transport', typicalShare: 8 },
+      { name: 'Combustível', icon: 'car', benchmarkKey: 'transport', typicalShare: 4 },
+      { name: 'Restaurantes', icon: 'gem', benchmarkKey: 'lifestyle', typicalShare: 5 },
+      { name: 'Roupas', icon: 'bag', benchmarkKey: null, typicalShare: 3 },
+      { name: 'Cuidados pessoais', icon: 'gem', benchmarkKey: null, typicalShare: 2 },
+      { name: 'Hobbies', icon: 'gem', benchmarkKey: 'lifestyle', typicalShare: 4 },
+      { name: 'Viagens', icon: 'gem', benchmarkKey: null, typicalShare: 5 },
+      { name: 'Dinheiro pessoal', icon: 'gem', benchmarkKey: null, typicalShare: 4 },
     ],
     debt: [
-      { name: 'Cartão', icon: 'card', benchmarkKey: 'debt' },
-      { name: 'Empréstimo', icon: 'card', benchmarkKey: 'debt' },
-      { name: 'Financiamento', icon: 'card', benchmarkKey: 'debt' },
+      { name: 'Cartão', icon: 'card', benchmarkKey: 'debt', typicalShare: 5 },
+      { name: 'Empréstimo', icon: 'card', benchmarkKey: 'debt', typicalShare: 5 },
+      { name: 'Financiamento', icon: 'card', benchmarkKey: 'debt', typicalShare: 5 },
     ],
   },
 };
@@ -2105,9 +2105,19 @@ export default function FinanceApp() {
       const peerTotal = peers.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
       let share;
       if (peerTotal > 0) {
+        // Proportional to existing amounts (preserves user's relative emphasis).
         share = ((Number(it.amount) || 0) / peerTotal) * target;
       } else {
-        share = target / peers.length;
+        // All zero — distribute proportional to typicalShare. Items missing
+        // typicalShare get a sensible fallback (the average share of the
+        // pillar's items that DO have one, or 1 as a final default).
+        const sharedItems = peers.filter(p => Number(p.typicalShare) > 0);
+        const avgShare = sharedItems.length > 0
+          ? sharedItems.reduce((s, p) => s + Number(p.typicalShare), 0) / sharedItems.length
+          : 1;
+        const effective = Number(it.typicalShare) > 0 ? Number(it.typicalShare) : avgShare;
+        const pillarShareSum = peers.reduce((s, p) => s + (Number(p.typicalShare) > 0 ? Number(p.typicalShare) : avgShare), 0);
+        share = pillarShareSum > 0 ? (effective / pillarShareSum) * target : target / peers.length;
       }
       return { ...it, amount: Math.round(share) };
     });
@@ -2130,7 +2140,7 @@ export default function FinanceApp() {
   const addItem = (pillar, preset = null) => {
     const base = preset || { name: t.allocate.newItem, icon: 'circle', benchmarkKey: null };
     const id = Math.random().toString(36);
-    setItems([...items, { id, name: base.name, icon: base.icon, pillar, benchmarkKey: base.benchmarkKey, amount: 0 }]);
+    setItems([...items, { id, name: base.name, icon: base.icon, pillar, benchmarkKey: base.benchmarkKey, amount: 0, typicalShare: base.typicalShare ?? null }]);
     setEditingItemId(id);
   };
 
