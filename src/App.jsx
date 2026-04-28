@@ -230,6 +230,14 @@ const copy = {
         above: 'above typical',
         below: 'below typical',
       },
+      typical: 'typical',
+      consequence: {
+        eyebrow: 'What this plan gets you',
+        goalOnTrack: (goal, date) => `On track to hit ${goal} by ${date}.`,
+        goalEta: (goal, date) => `At this pace, ${goal} ready by ${date}.`,
+        savesYear: (amt) => `This plan adds ${amt} to your wealth this year.`,
+        empty: 'Plan how your income flows this month.',
+      },
       smartCard: {
         title: 'Not sure how to split?',
         sub: '3 quick questions. Two suggested plans.',
@@ -663,6 +671,14 @@ const copy = {
         on: 'no padrão',
         above: 'acima do típico',
         below: 'abaixo do típico',
+      },
+      typical: 'típico',
+      consequence: {
+        eyebrow: 'O que esse plano te dá',
+        goalOnTrack: (goal, date) => `No ritmo pra conquistar ${goal} em ${date}.`,
+        goalEta: (goal, date) => `Nesse ritmo, ${goal} pronto em ${date}.`,
+        savesYear: (amt) => `Esse plano soma ${amt} ao seu patrimônio este ano.`,
+        empty: 'Planeje como seu dinheiro flui este mês.',
       },
       smartCard: {
         title: 'Não sabe como dividir?',
@@ -2936,6 +2952,47 @@ export default function FinanceApp() {
               )}
             </div>
 
+            {/* Consequence line — what the current plan gets the user */}
+            {smartStep === null && (() => {
+              // Pick the most relevant goal: incomplete, with monthly contribution, prefer one with deadline.
+              const candidates = goals.filter(g => Number(g.target) > 0 && Number(g.current) < Number(g.target) && Number(g.monthly) > 0);
+              const withDeadline = candidates.find(g => g.deadline);
+              const goal = withDeadline || candidates[0];
+              let line = null;
+              let icon = <TrendingUp size={14} color={C.accent} strokeWidth={2.5} />;
+              if (goal) {
+                const remaining = Math.max(0, Number(goal.target) - Number(goal.current));
+                const months = Math.ceil(remaining / Number(goal.monthly));
+                const d = new Date();
+                d.setMonth(d.getMonth() + months);
+                const dateLabel = `${t.month.names[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
+                let onTrack = true;
+                if (goal.deadline) {
+                  const dl = new Date(goal.deadline + '-01');
+                  const monthsToDeadline = (dl.getFullYear() - new Date().getFullYear()) * 12 + (dl.getMonth() - new Date().getMonth());
+                  onTrack = monthsToDeadline >= months;
+                }
+                line = onTrack ? t.allocate.consequence.goalOnTrack(goal.name, dateLabel) : t.allocate.consequence.goalEta(goal.name, dateLabel);
+                if (!onTrack) icon = <AlertCircle size={14} color={C.red} strokeWidth={2.5} />;
+              } else if ((pillarTotals.save || 0) > 0) {
+                line = t.allocate.consequence.savesYear(fmt((pillarTotals.save || 0) * 12, t));
+              } else {
+                line = t.allocate.consequence.empty;
+                icon = <Sparkles size={14} color={C.inkSoft} strokeWidth={2.5} />;
+              }
+              return (
+                <div style={{ marginTop: 12, marginBottom: 12, padding: '14px 16px', background: C.surface, border: `1px solid ${C.lineSoft}`, borderRadius: 14, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 8, background: `${C.accent}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {icon}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 10, color: C.accent, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 2 }}>{t.allocate.consequence.eyebrow}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, lineHeight: 1.4 }}>{line}</div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Money flow bar */}
             {smartStep === null && (
               <div style={s.card}>
@@ -3098,6 +3155,9 @@ export default function FinanceApp() {
               const isEditingTarget = editingPillarTarget === pillarKey;
               const overTarget = targetAbs > 0 && pillarTotal > targetAbs;
 
+              const benchPct = Math.round((allocationBenchmark[pillarKey] || 0) * 100);
+              const benchOnTrack = allocated > 0 && Math.abs(pillarPct - benchPct) < 5;
+
               return (
                 <div key={pillarKey} style={s.card}>
                   <div style={s.pillarHeader}>
@@ -3105,6 +3165,12 @@ export default function FinanceApp() {
                     <div style={{ flex: 1 }}>
                       <div style={s.pillarName}>{pillar.name}</div>
                       <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 1 }}>{pillar.sub}</div>
+                      {allocated > 0 && (
+                        <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 4, fontWeight: 600, fontVariantNumeric: 'tabular-nums', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: 3, background: benchOnTrack ? C.accent : C.inkMuted, flexShrink: 0 }} />
+                          {pillarPct}% · {t.allocate.typical} {benchPct}%
+                        </div>
+                      )}
                       {targetAbs > 0 && (
                         <div style={{ marginTop: 6 }}>
                           <div style={{ height: 5, background: C.lineSoft, borderRadius: 3, overflow: 'hidden' }}>
