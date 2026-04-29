@@ -174,7 +174,7 @@ const copy = {
       surplusTitle: 'You have unassigned money',
       surplusBody: (amt) => `${amt} is still unassigned. Where should it go?`,
       surplusKeep: 'Save as is',
-      surplusSplit: 'Split across Wealth',
+      surplusSplit: 'Split across Save',
       sendTo: (name) => `Send to ${name}`,
       replaceTitle: 'Replace your current plan?',
       replaceBody: 'Items stay; only the amounts change to follow the recommended pillar shares.',
@@ -273,6 +273,15 @@ const copy = {
         sheetTitle: 'Link this item to a goal',
         sheetSub: 'When you check in, this amount adds to the goal automatically.',
         empty: 'No matching goals yet. Add one in the Goals tab first.',
+        unlink: 'Unlink',
+        close: 'Close',
+      },
+      bucketLink: {
+        chip: 'Link to Wealth',
+        chipLinked: (name) => `→ ${name}`,
+        sheetTitle: 'Link this item to a Wealth bucket',
+        sheetSub: 'The amount becomes the bucket\'s planned monthly contribution.',
+        empty: 'No Wealth buckets yet. Add one in the Wealth tab first.',
         unlink: 'Unlink',
         close: 'Close',
       },
@@ -656,7 +665,7 @@ const copy = {
       surplusTitle: 'Você ainda tem dinheiro sobrando',
       surplusBody: (amt) => `${amt} ainda não foi alocado. Onde colocar?`,
       surplusKeep: 'Salvar mesmo assim',
-      surplusSplit: 'Dividir no Patrimônio',
+      surplusSplit: 'Dividir no Guardar',
       sendTo: (name) => `Mandar pra ${name}`,
       replaceTitle: 'Substituir seu plano atual?',
       replaceBody: 'Os itens continuam; apenas os valores mudam pra seguir as proporções recomendadas.',
@@ -755,6 +764,15 @@ const copy = {
         sheetTitle: 'Vincular este item a uma meta',
         sheetSub: 'Quando você fizer o check-in, esse valor entra na meta automaticamente.',
         empty: 'Nenhuma meta compatível ainda. Adicione uma na aba Metas primeiro.',
+        unlink: 'Desvincular',
+        close: 'Fechar',
+      },
+      bucketLink: {
+        chip: 'Vincular ao Patrimônio',
+        chipLinked: (name) => `→ ${name}`,
+        sheetTitle: 'Vincular este item a uma categoria de Patrimônio',
+        sheetSub: 'O valor vira a contribuição mensal planejada da categoria.',
+        empty: 'Sem categorias de Patrimônio ainda. Adicione uma na aba Patrimônio primeiro.',
         unlink: 'Desvincular',
         close: 'Fechar',
       },
@@ -1709,6 +1727,7 @@ export default function FinanceApp() {
   const [billsTipsOpen, setBillsTipsOpen] = useState(false);
   const [saveTipsOpen, setSaveTipsOpen] = useState(false);
   const [linkSheetItemId, setLinkSheetItemId] = useState(null);
+  const [bucketLinkSheetItemId, setBucketLinkSheetItemId] = useState(null);
 
   // UI state — don't persist editing flags etc.
   const [editingItemId, setEditingItemId] = useState(null);
@@ -1805,12 +1824,6 @@ export default function FinanceApp() {
   const unassigned = salary - allocated;
   const totalWealth = useMemo(() => buckets.reduce((sum, b) => sum + (Number(b.current) || 0), 0), [buckets]);
   const monthlyContrib = useMemo(() => buckets.reduce((sum, b) => sum + (Number(b.monthly) || 0), 0), [buckets]);
-
-  // Monthly contribution from Allocate's Wealth pillar (auto-computed)
-  const wealthFromAllocate = useMemo(() =>
-    items.filter(i => i.pillar === 'wealth').reduce((sum, i) => sum + (Number(i.amount) || 0), 0),
-    [items]
-  );
 
   // Pillar totals
   const pillarTotals = useMemo(() => {
@@ -2146,10 +2159,10 @@ export default function FinanceApp() {
   };
   const splitSurplusAcrossWealth = () => {
     if (unassigned <= 0) return;
-    const wealthItems = items.filter(i => i.pillar === 'wealth');
-    if (wealthItems.length === 0) return;
-    const share = unassigned / wealthItems.length;
-    setItems(items.map(i => i.pillar === 'wealth' ? { ...i, amount: (Number(i.amount) || 0) + share } : i));
+    const saveItems = items.filter(i => i.pillar === 'save');
+    if (saveItems.length === 0) return;
+    const share = unassigned / saveItems.length;
+    setItems(items.map(i => i.pillar === 'save' ? { ...i, amount: (Number(i.amount) || 0) + share } : i));
     setSurplusRedirectOpen(false);
   };
 
@@ -2216,46 +2229,65 @@ export default function FinanceApp() {
     // Open the Month Review sheet with deltas, goal pace, drift, and benchmark callouts.
     setReviewOpen(true);
 
-    // Smart Allocate→Wealth feed: map wealth items to matching buckets by type
-    // Emergency fund → cash buckets · Savings → cash/bonds · Investments → stocks/reits/crypto
-    const wealthItems = items.filter(i => i.pillar === 'wealth' && Number(i.amount) > 0);
-    if (wealthItems.length > 0 && buckets.length > 0) {
-      // Classify each wealth item by benchmarkKey
-      const contribByBenchmark = { emergency: 0, savings: 0, investments: 0 };
-      wealthItems.forEach(i => {
-        const key = i.benchmarkKey || 'savings';
-        if (contribByBenchmark[key] !== undefined) contribByBenchmark[key] += Number(i.amount);
-        else contribByBenchmark.savings += Number(i.amount);
-      });
-
-      // Target bucket types for each wealth item type
-      const targetTypes = {
-        emergency: ['cash'],
-        savings: ['cash', 'bonds'],
-        investments: ['stocks', 'reits', 'crypto', 'bonds'],
-      };
-
-      // Build new bucket monthly values
+    // Allocate→Wealth feed: at check-in, update each Wealth bucket's `monthly`
+    // (planned contribution that drives Forecast). The bucket's `current`
+    // (actual balance) is intentionally NOT touched — that stays manual so
+    // Wealth keeps reflecting real holdings.
+    // Two paths:
+    // - Linked: a Save item with bucketId sets its bucket's monthly directly
+    //   (1-to-1 connection, like the Goal link). Linked buckets are claimed
+    //   and won't receive auto-routed money.
+    // - Unlinked: Save items without bucketId fall through to the benchmark
+    //   routing (Emergency→cash · Savings→cash/bonds · Investments→
+    //   stocks/reits/crypto/bonds), distributing across UNLINKED buckets
+    //   proportionally to current balance.
+    const saveItems = items.filter(i => i.pillar === 'save' && Number(i.amount) > 0);
+    if (saveItems.length > 0 && buckets.length > 0) {
       const newBuckets = buckets.map(b => ({ ...b, monthly: 0 }));
+      const linkedBucketIds = new Set();
 
-      Object.entries(contribByBenchmark).forEach(([key, total]) => {
-        if (total <= 0) return;
-        const matches = newBuckets.filter(b => targetTypes[key].includes(b.type));
-        if (matches.length === 0) {
-          // No matching bucket type — spread across all as fallback
-          const share = total / newBuckets.length;
-          newBuckets.forEach(b => { b.monthly += share; });
-        } else {
-          // Distribute by existing bucket value weight, or equally if all zero
-          const totalCurrent = matches.reduce((s, b) => s + Number(b.current || 0), 0);
-          matches.forEach(b => {
-            const weight = totalCurrent > 0 ? (Number(b.current || 0) / totalCurrent) : (1 / matches.length);
-            b.monthly += total * weight;
-          });
-        }
+      // Linked pass: each linked Save item sets its bucket's monthly directly.
+      saveItems.forEach(i => {
+        if (!i.bucketId) return;
+        const b = newBuckets.find(bx => bx.id === i.bucketId);
+        if (!b) return;
+        b.monthly = (b.monthly || 0) + Number(i.amount);
+        linkedBucketIds.add(b.id);
       });
 
-      // Round and commit
+      // Unlinked pass: benchmark routing across unlinked items + unlinked buckets.
+      const unlinkedItems = saveItems.filter(i => !i.bucketId);
+      const unlinkedBuckets = newBuckets.filter(b => !linkedBucketIds.has(b.id));
+      if (unlinkedItems.length > 0 && unlinkedBuckets.length > 0) {
+        const contribByBenchmark = { emergency: 0, savings: 0, investments: 0 };
+        unlinkedItems.forEach(i => {
+          const key = i.benchmarkKey || 'savings';
+          if (contribByBenchmark[key] !== undefined) contribByBenchmark[key] += Number(i.amount);
+          else contribByBenchmark.savings += Number(i.amount);
+        });
+
+        const targetTypes = {
+          emergency: ['cash'],
+          savings: ['cash', 'bonds'],
+          investments: ['stocks', 'reits', 'crypto', 'bonds'],
+        };
+
+        Object.entries(contribByBenchmark).forEach(([key, total]) => {
+          if (total <= 0) return;
+          const matches = unlinkedBuckets.filter(b => targetTypes[key].includes(b.type));
+          if (matches.length === 0) {
+            const share = total / unlinkedBuckets.length;
+            unlinkedBuckets.forEach(b => { b.monthly += share; });
+          } else {
+            const totalCurrent = matches.reduce((s, b) => s + Number(b.current || 0), 0);
+            matches.forEach(b => {
+              const weight = totalCurrent > 0 ? (Number(b.current || 0) / totalCurrent) : (1 / matches.length);
+              b.monthly += total * weight;
+            });
+          }
+        });
+      }
+
       newBuckets.forEach(b => { b.monthly = Math.round(b.monthly); });
       setBuckets(newBuckets);
     }
@@ -2661,10 +2693,14 @@ export default function FinanceApp() {
     const next = field === 'amount' ? (value === '' ? 0 : Number(value)) : value;
     setItems(items.map(c => c.id === id ? { ...c, [field]: next } : c));
     // Linked-goal sync: editing the item amount updates the goal's monthly.
+    // Linked-bucket sync: same — amount becomes the linked bucket's planned monthly.
     if (field === 'amount') {
       const it = items.find(c => c.id === id);
       if (it && it.goalId) {
         setGoals(goals.map(g => g.id === it.goalId ? { ...g, monthly: Number(next) || 0 } : g));
+      }
+      if (it && it.bucketId) {
+        setBuckets(buckets.map(b => b.id === it.bucketId ? { ...b, monthly: Number(next) || 0, lastUpdated: Date.now() } : b));
       }
     }
   };
@@ -2682,8 +2718,23 @@ export default function FinanceApp() {
     const item = items.find(i => i.id === itemId);
     if (item) setGoals(goals.map(g => g.id === goalId ? { ...g, monthly: Number(item.amount) || 0 } : g));
   };
+  const linkItemToBucket = (itemId, bucketId) => {
+    const bucket = buckets.find(b => b.id === bucketId);
+    if (!bucket) return;
+    setItems(items.map(i => {
+      // 1-to-1: any other item linked to this bucket gets cleared.
+      if (i.bucketId === bucketId && i.id !== itemId) return { ...i, bucketId: null };
+      if (i.id !== itemId) return i;
+      return { ...i, bucketId };
+    }));
+    const item = items.find(i => i.id === itemId);
+    if (item) setBuckets(buckets.map(b => b.id === bucketId ? { ...b, monthly: Number(item.amount) || 0, lastUpdated: Date.now() } : b));
+  };
   const unlinkItem = (itemId) => {
     setItems(items.map(i => i.id === itemId ? { ...i, goalId: null } : i));
+  };
+  const unlinkItemFromBucket = (itemId) => {
+    setItems(items.map(i => i.id === itemId ? { ...i, bucketId: null } : i));
   };
   const computePillarPctFromSplit = (split) => {
     const totals = { save: 0, bills: 0, spend: 0, debt: 0 };
@@ -2795,10 +2846,18 @@ export default function FinanceApp() {
   };
 
   const updateBucket = (id, field, value) => {
-    setBuckets(buckets.map(b => b.id === id ? { ...b, [field]: ['current', 'monthly', 'growth', 'dividend', 'risk'].includes(field) ? (value === '' ? 0 : Number(value)) : value, lastUpdated: Date.now() } : b));
+    const next = ['current', 'monthly', 'growth', 'dividend', 'risk'].includes(field) ? (value === '' ? 0 : Number(value)) : value;
+    setBuckets(buckets.map(b => b.id === id ? { ...b, [field]: next, lastUpdated: Date.now() } : b));
+    // Linked-item sync: editing the bucket's monthly updates the linked Allocate
+    // Save item's amount.
+    if (field === 'monthly') {
+      const linked = items.find(i => i.bucketId === id);
+      if (linked) setItems(items.map(i => i.id === linked.id ? { ...i, amount: Number(next) || 0 } : i));
+    }
   };
   const removeBucket = (id) => {
     setBuckets(buckets.filter(b => b.id !== id));
+    setItems(items.map(i => i.bucketId === id ? { ...i, bucketId: null } : i));
     if (editingBucketId === id) setEditingBucketId(null);
     if (txBucketId === id) setTxBucketId(null);
   };
@@ -3681,20 +3740,37 @@ export default function FinanceApp() {
                           );
                         })()}
 
-                        {/* Wealth feed hint — Save items get auto-routed into matching bucket
-                            types at check-in. Show which buckets will receive the contribution
-                            so the connection isn't invisible. */}
-                        {item.pillar === 'save' && Number(item.amount) > 0 && (() => {
-                          const targetTypes = { emergency: ['cash'], savings: ['cash', 'bonds'], investments: ['stocks', 'reits', 'crypto', 'bonds'] };
-                          const types = targetTypes[item.benchmarkKey] || ['cash', 'bonds', 'stocks', 'reits', 'crypto'];
-                          const matchingBuckets = buckets.filter(b => types.includes(b.type));
-                          if (matchingBuckets.length === 0) return null;
-                          const names = matchingBuckets.slice(0, 2).map(b => b.name).join(', ');
-                          const more = matchingBuckets.length > 2 ? ` +${matchingBuckets.length - 2}` : '';
+                        {/* Wealth bucket link chip — Save items can be tied to a specific
+                            Wealth bucket so the planned monthly flows directly. Unlinked
+                            items still benefit from auto-routing at check-in. */}
+                        {item.pillar === 'save' && (() => {
+                          const linkedBucket = item.bucketId ? buckets.find(b => b.id === item.bucketId) : null;
+                          // Auto-routing fallback hint shows when no explicit link.
+                          if (!linkedBucket) {
+                            const targetTypes = { emergency: ['cash'], savings: ['cash', 'bonds'], investments: ['stocks', 'reits', 'crypto', 'bonds'] };
+                            const types = targetTypes[item.benchmarkKey] || ['cash', 'bonds', 'stocks', 'reits', 'crypto'];
+                            const matchingBuckets = buckets.filter(b => types.includes(b.type));
+                            const hasFallback = Number(item.amount) > 0 && matchingBuckets.length > 0;
+                            return (
+                              <div style={{ marginTop: 6, paddingLeft: 36, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+                                <button onClick={() => setBucketLinkSheetItemId(item.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, border: `1px dashed ${C.line}`, background: 'transparent', color: C.inkMuted, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: fontSans }}>
+                                  <TrendingUp size={10} strokeWidth={2.5} />
+                                  {t.allocate.bucketLink.chip}
+                                </button>
+                                {hasFallback && (
+                                  <span style={{ fontSize: 10, color: C.inkMuted, fontStyle: 'italic' }}>
+                                    {t.allocate.feedsWealth} {matchingBuckets.slice(0, 2).map(b => b.name).join(', ')}{matchingBuckets.length > 2 ? ` +${matchingBuckets.length - 2}` : ''}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          }
                           return (
-                            <div style={{ marginTop: 4, paddingLeft: 36, fontSize: 10, color: C.inkMuted, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <TrendingUp size={9} strokeWidth={2.5} />
-                              {t.allocate.feedsWealth} {names}{more}
+                            <div style={{ marginTop: 6, paddingLeft: 36 }}>
+                              <button onClick={() => setBucketLinkSheetItemId(item.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, border: `1px solid ${C.accent}40`, background: `${C.accent}10`, color: C.accent, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: fontSans }}>
+                                <TrendingUp size={10} strokeWidth={2.5} />
+                                {t.allocate.bucketLink.chipLinked(linkedBucket.name)}
+                              </button>
                             </div>
                           );
                         })()}
@@ -3812,7 +3888,7 @@ export default function FinanceApp() {
               const candidates = ['emergency', 'investments', 'savings']
                 .map(key => ({ key, item: items.find(i => i.benchmarkKey === key) }))
                 .filter(x => x.item);
-              const wealthItemsExist = items.some(i => i.pillar === 'wealth');
+              const wealthItemsExist = items.some(i => i.pillar === 'save');
               return (
                 <div onClick={() => setSurplusRedirectOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
                   <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)' }}>
@@ -4916,6 +4992,59 @@ export default function FinanceApp() {
                 )}
                 <button onClick={() => setLinkSheetItemId(null)} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: 'none', background: C.accent, color: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 700 }}>
                   {t.allocate.link.close}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Allocate Save item ↔ Wealth bucket linker */}
+      {bucketLinkSheetItemId && (() => {
+        const item = items.find(i => i.id === bucketLinkSheetItemId);
+        if (!item) return null;
+        const linkedBucket = item.bucketId ? buckets.find(b => b.id === item.bucketId) : null;
+        return (
+          <div onClick={() => setBucketLinkSheetItemId(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: '88vh', background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div style={{ width: 36, height: 4, background: C.line, borderRadius: 2, margin: '0 auto 14px' }} />
+              <div style={{ fontSize: 17, fontWeight: 700, color: C.ink, marginBottom: 4 }}>{t.allocate.bucketLink.sheetTitle}</div>
+              <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 16, lineHeight: 1.45 }}>{t.allocate.bucketLink.sheetSub}</div>
+
+              {buckets.length === 0 && (
+                <div style={{ padding: 14, background: C.surfaceAlt, borderRadius: 12, fontSize: 13, color: C.inkSoft, marginBottom: 16 }}>{t.allocate.bucketLink.empty}</div>
+              )}
+
+              {buckets.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                  {buckets.map(b => {
+                    const sel = item.bucketId === b.id;
+                    const typeLabel = (t.wealth.types && t.wealth.types[b.type]) || b.type;
+                    const dotColor = BUCKET_COLORS[b.type] || C.inkMuted;
+                    return (
+                      <button key={b.id} onClick={() => { linkItemToBucket(item.id, b.id); setBucketLinkSheetItemId(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, border: `1px solid ${sel ? C.accent : C.line}`, background: sel ? `${C.accent}10` : C.surface, color: C.ink, cursor: 'pointer', fontFamily: fontSans, textAlign: 'left' }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: `${dotColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <span style={{ width: 10, height: 10, borderRadius: 3, background: dotColor }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{b.name}</div>
+                          <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 2 }}>{typeLabel} · {fmt(b.current, t)}</div>
+                        </div>
+                        {sel && <Check size={16} color={C.accent} strokeWidth={3} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                {linkedBucket && (
+                  <button onClick={() => { unlinkItemFromBucket(item.id); setBucketLinkSheetItemId(null); }} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: `1px solid ${C.line}`, background: C.surface, color: C.red, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 600 }}>
+                    {t.allocate.bucketLink.unlink}
+                  </button>
+                )}
+                <button onClick={() => setBucketLinkSheetItemId(null)} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: 'none', background: C.accent, color: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 700 }}>
+                  {t.allocate.bucketLink.close}
                 </button>
               </div>
             </div>
