@@ -268,10 +268,12 @@ const copy = {
         ],
       },
       link: {
-        chip: 'Link to goal',
+        chip: 'Link',
         chipLinked: (name) => `→ ${name}`,
-        sheetTitle: 'Link this item to a goal',
-        sheetSub: 'When you check in, this amount adds to the goal automatically.',
+        sheetTitle: 'Link this item',
+        sheetSub: 'Pick a goal (logical earmark) and/or a Wealth bucket (where the money sits).',
+        sectionGoal: 'Goal',
+        sectionBucket: 'Wealth bucket',
         empty: 'No matching goals yet. Add one in the Goals tab first.',
         unlink: 'Unlink',
         close: 'Close',
@@ -759,10 +761,12 @@ const copy = {
         ],
       },
       link: {
-        chip: 'Vincular a meta',
+        chip: 'Vincular',
         chipLinked: (name) => `→ ${name}`,
-        sheetTitle: 'Vincular este item a uma meta',
-        sheetSub: 'Quando você fizer o check-in, esse valor entra na meta automaticamente.',
+        sheetTitle: 'Vincular este item',
+        sheetSub: 'Escolha uma meta (objetivo) e/ou uma categoria do Patrimônio (onde o dinheiro fica).',
+        sectionGoal: 'Meta',
+        sectionBucket: 'Categoria do Patrimônio',
         empty: 'Nenhuma meta compatível ainda. Adicione uma na aba Metas primeiro.',
         unlink: 'Desvincular',
         close: 'Fechar',
@@ -1727,7 +1731,6 @@ export default function FinanceApp() {
   const [billsTipsOpen, setBillsTipsOpen] = useState(false);
   const [saveTipsOpen, setSaveTipsOpen] = useState(false);
   const [linkSheetItemId, setLinkSheetItemId] = useState(null);
-  const [bucketLinkSheetItemId, setBucketLinkSheetItemId] = useState(null);
 
   // UI state — don't persist editing flags etc.
   const [editingItemId, setEditingItemId] = useState(null);
@@ -3727,49 +3730,23 @@ export default function FinanceApp() {
                           </div>
                         )}
 
-                        {/* Linked-goal chip — only on Save and Debt items, where linking is honest */}
+                        {/* Unified link chip — Save items can be tied to a Goal (logical
+                            earmark) and/or a Wealth bucket (planned monthly contribution).
+                            Debt items only support Goal links. One chip, one sheet, two
+                            sections. The auto-routing fallback for unlinked Save items
+                            still applies silently at check-in. */}
                         {(item.pillar === 'save' || item.pillar === 'debt') && (() => {
                           const linkedGoal = item.goalId ? goals.find(g => g.id === item.goalId) : null;
+                          const linkedBucket = item.pillar === 'save' && item.bucketId ? buckets.find(b => b.id === item.bucketId) : null;
+                          const isLinked = !!(linkedGoal || linkedBucket);
+                          const linkedNames = [linkedGoal && linkedGoal.name, linkedBucket && linkedBucket.name].filter(Boolean).join(' · ');
                           return (
                             <div style={{ marginTop: 6, paddingLeft: 36 }}>
-                              <button onClick={() => setLinkSheetItemId(item.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, border: linkedGoal ? `1px solid ${C.accent}40` : `1px dashed ${C.line}`, background: linkedGoal ? `${C.accent}10` : 'transparent', color: linkedGoal ? C.accent : C.inkMuted, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: fontSans }}>
+                              <button onClick={() => setLinkSheetItemId(item.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, border: isLinked ? `1px solid ${C.accent}40` : `1px dashed ${C.line}`, background: isLinked ? `${C.accent}10` : 'transparent', color: isLinked ? C.accent : C.inkMuted, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: fontSans, maxWidth: '100%' }}>
                                 <Target size={10} strokeWidth={2.5} />
-                                {linkedGoal ? t.allocate.link.chipLinked(linkedGoal.name) : t.allocate.link.chip}
-                              </button>
-                            </div>
-                          );
-                        })()}
-
-                        {/* Wealth bucket link chip — Save items can be tied to a specific
-                            Wealth bucket so the planned monthly flows directly. Unlinked
-                            items still benefit from auto-routing at check-in. */}
-                        {item.pillar === 'save' && (() => {
-                          const linkedBucket = item.bucketId ? buckets.find(b => b.id === item.bucketId) : null;
-                          // Auto-routing fallback hint shows when no explicit link.
-                          if (!linkedBucket) {
-                            const targetTypes = { emergency: ['cash'], savings: ['cash', 'bonds'], investments: ['stocks', 'reits', 'crypto', 'bonds'] };
-                            const types = targetTypes[item.benchmarkKey] || ['cash', 'bonds', 'stocks', 'reits', 'crypto'];
-                            const matchingBuckets = buckets.filter(b => types.includes(b.type));
-                            const hasFallback = Number(item.amount) > 0 && matchingBuckets.length > 0;
-                            return (
-                              <div style={{ marginTop: 6, paddingLeft: 36, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-                                <button onClick={() => setBucketLinkSheetItemId(item.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, border: `1px dashed ${C.line}`, background: 'transparent', color: C.inkMuted, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: fontSans }}>
-                                  <TrendingUp size={10} strokeWidth={2.5} />
-                                  {t.allocate.bucketLink.chip}
-                                </button>
-                                {hasFallback && (
-                                  <span style={{ fontSize: 10, color: C.inkMuted, fontStyle: 'italic' }}>
-                                    {t.allocate.feedsWealth} {matchingBuckets.slice(0, 2).map(b => b.name).join(', ')}{matchingBuckets.length > 2 ? ` +${matchingBuckets.length - 2}` : ''}
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          }
-                          return (
-                            <div style={{ marginTop: 6, paddingLeft: 36 }}>
-                              <button onClick={() => setBucketLinkSheetItemId(item.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, border: `1px solid ${C.accent}40`, background: `${C.accent}10`, color: C.accent, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: fontSans }}>
-                                <TrendingUp size={10} strokeWidth={2.5} />
-                                {t.allocate.bucketLink.chipLinked(linkedBucket.name)}
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {isLinked ? `→ ${linkedNames}` : t.allocate.link.chip}
+                                </span>
                               </button>
                             </div>
                           );
@@ -4946,30 +4923,32 @@ export default function FinanceApp() {
         </div>
       )}
 
-      {/* Link picker — pair an Allocate item to a Goal */}
+      {/* Unified link picker: one sheet, two sections (Goal + Wealth bucket).
+          Save items can link to either or both; Debt items only link to Goals. */}
       {linkSheetItemId && (() => {
         const item = items.find(i => i.id === linkSheetItemId);
         if (!item) return null;
-        // Save items match savings goals; Debt items match debt goals.
-        const eligible = goals.filter(g => item.pillar === 'debt' ? g.type === 'debt' : g.type !== 'debt');
+        const eligibleGoals = goals.filter(g => item.pillar === 'debt' ? g.type === 'debt' : g.type !== 'debt');
         const linkedGoal = item.goalId ? goals.find(g => g.id === item.goalId) : null;
+        const linkedBucket = item.pillar === 'save' && item.bucketId ? buckets.find(b => b.id === item.bucketId) : null;
+        const showBucketSection = item.pillar === 'save';
         return (
           <div onClick={() => setLinkSheetItemId(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
             <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: '88vh', background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <div style={{ width: 36, height: 4, background: C.line, borderRadius: 2, margin: '0 auto 14px' }} />
               <div style={{ fontSize: 17, fontWeight: 700, color: C.ink, marginBottom: 4 }}>{t.allocate.link.sheetTitle}</div>
-              <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 16, lineHeight: 1.45 }}>{t.allocate.link.sheetSub}</div>
+              <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 18, lineHeight: 1.45 }}>{t.allocate.link.sheetSub}</div>
 
-              {eligible.length === 0 && (
-                <div style={{ padding: 14, background: C.surfaceAlt, borderRadius: 12, fontSize: 13, color: C.inkSoft, marginBottom: 16 }}>{t.allocate.link.empty}</div>
-              )}
-
-              {eligible.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-                  {eligible.map(g => {
+              {/* Goal section */}
+              <div style={{ fontSize: 10, color: C.inkMuted, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>{t.allocate.link.sectionGoal}</div>
+              {eligibleGoals.length === 0 ? (
+                <div style={{ padding: 12, background: C.surfaceAlt, borderRadius: 12, fontSize: 12, color: C.inkSoft, marginBottom: 18 }}>{t.allocate.link.empty}</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+                  {eligibleGoals.map(g => {
                     const sel = item.goalId === g.id;
                     return (
-                      <button key={g.id} onClick={() => { linkItemToGoal(item.id, g.id); setLinkSheetItemId(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, border: `1px solid ${sel ? C.accent : C.line}`, background: sel ? `${C.accent}10` : C.surface, color: C.ink, cursor: 'pointer', fontFamily: fontSans, textAlign: 'left' }}>
+                      <button key={g.id} onClick={() => { sel ? unlinkItem(item.id) : linkItemToGoal(item.id, g.id); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, border: `1px solid ${sel ? C.accent : C.line}`, background: sel ? `${C.accent}10` : C.surface, color: C.ink, cursor: 'pointer', fontFamily: fontSans, textAlign: 'left' }}>
                         <div style={{ width: 32, height: 32, borderRadius: 8, background: g.type === 'debt' ? C.redSoft : C.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {renderIcon(g.icon, 14, g.type === 'debt' ? C.red : C.accent, 2)}
                         </div>
@@ -4984,69 +4963,39 @@ export default function FinanceApp() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: 8 }}>
-                {linkedGoal && (
-                  <button onClick={() => { unlinkItem(item.id); setLinkSheetItemId(null); }} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: `1px solid ${C.line}`, background: C.surface, color: C.red, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 600 }}>
-                    {t.allocate.link.unlink}
-                  </button>
-                )}
-                <button onClick={() => setLinkSheetItemId(null)} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: 'none', background: C.accent, color: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 700 }}>
-                  {t.allocate.link.close}
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Allocate Save item ↔ Wealth bucket linker */}
-      {bucketLinkSheetItemId && (() => {
-        const item = items.find(i => i.id === bucketLinkSheetItemId);
-        if (!item) return null;
-        const linkedBucket = item.bucketId ? buckets.find(b => b.id === item.bucketId) : null;
-        return (
-          <div onClick={() => setBucketLinkSheetItemId(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: '88vh', background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <div style={{ width: 36, height: 4, background: C.line, borderRadius: 2, margin: '0 auto 14px' }} />
-              <div style={{ fontSize: 17, fontWeight: 700, color: C.ink, marginBottom: 4 }}>{t.allocate.bucketLink.sheetTitle}</div>
-              <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 16, lineHeight: 1.45 }}>{t.allocate.bucketLink.sheetSub}</div>
-
-              {buckets.length === 0 && (
-                <div style={{ padding: 14, background: C.surfaceAlt, borderRadius: 12, fontSize: 13, color: C.inkSoft, marginBottom: 16 }}>{t.allocate.bucketLink.empty}</div>
+              {/* Wealth bucket section — Save items only */}
+              {showBucketSection && (
+                <>
+                  <div style={{ fontSize: 10, color: C.inkMuted, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>{t.allocate.link.sectionBucket}</div>
+                  {buckets.length === 0 ? (
+                    <div style={{ padding: 12, background: C.surfaceAlt, borderRadius: 12, fontSize: 12, color: C.inkSoft, marginBottom: 18 }}>{t.allocate.bucketLink.empty}</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+                      {buckets.map(b => {
+                        const sel = item.bucketId === b.id;
+                        const typeLabel = (t.wealth.types && t.wealth.types[b.type]) || b.type;
+                        const dotColor = BUCKET_COLORS[b.type] || C.inkMuted;
+                        return (
+                          <button key={b.id} onClick={() => { sel ? unlinkItemFromBucket(item.id) : linkItemToBucket(item.id, b.id); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, border: `1px solid ${sel ? C.accent : C.line}`, background: sel ? `${C.accent}10` : C.surface, color: C.ink, cursor: 'pointer', fontFamily: fontSans, textAlign: 'left' }}>
+                            <div style={{ width: 32, height: 32, borderRadius: 8, background: `${dotColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <span style={{ width: 10, height: 10, borderRadius: 3, background: dotColor }} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{b.name}</div>
+                              <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 2 }}>{typeLabel} · {fmt(b.current, t)}</div>
+                            </div>
+                            {sel && <Check size={16} color={C.accent} strokeWidth={3} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               )}
 
-              {buckets.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-                  {buckets.map(b => {
-                    const sel = item.bucketId === b.id;
-                    const typeLabel = (t.wealth.types && t.wealth.types[b.type]) || b.type;
-                    const dotColor = BUCKET_COLORS[b.type] || C.inkMuted;
-                    return (
-                      <button key={b.id} onClick={() => { linkItemToBucket(item.id, b.id); setBucketLinkSheetItemId(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, border: `1px solid ${sel ? C.accent : C.line}`, background: sel ? `${C.accent}10` : C.surface, color: C.ink, cursor: 'pointer', fontFamily: fontSans, textAlign: 'left' }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 8, background: `${dotColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <span style={{ width: 10, height: 10, borderRadius: 3, background: dotColor }} />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{b.name}</div>
-                          <div style={{ fontSize: 11, color: C.inkMuted, marginTop: 2 }}>{typeLabel} · {fmt(b.current, t)}</div>
-                        </div>
-                        {sel && <Check size={16} color={C.accent} strokeWidth={3} />}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                {linkedBucket && (
-                  <button onClick={() => { unlinkItemFromBucket(item.id); setBucketLinkSheetItemId(null); }} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: `1px solid ${C.line}`, background: C.surface, color: C.red, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 600 }}>
-                    {t.allocate.bucketLink.unlink}
-                  </button>
-                )}
-                <button onClick={() => setBucketLinkSheetItemId(null)} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: 'none', background: C.accent, color: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 700 }}>
-                  {t.allocate.bucketLink.close}
-                </button>
-              </div>
+              <button onClick={() => setLinkSheetItemId(null)} style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: 'none', background: C.accent, color: C.surface, cursor: 'pointer', fontFamily: fontSans, fontSize: 13, fontWeight: 700 }}>
+                {t.allocate.link.close}
+              </button>
             </div>
           </div>
         );
