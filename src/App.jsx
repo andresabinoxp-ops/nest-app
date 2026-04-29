@@ -1678,6 +1678,12 @@ export default function FinanceApp() {
     };
   });
   // Manual pillar targets in absolute currency. Optional, top-down planning.
+  // Persisted set of pillar keys the user has collapsed on Allocate. Default
+  // (everyone starts) all expanded; once collapsed, the choice sticks.
+  const [collapsedPillars, setCollapsedPillars] = useState(() => Array.isArray(saved?.collapsedPillars) ? saved.collapsedPillars : []);
+  const togglePillarCollapsed = (key) => {
+    setCollapsedPillars(prev => prev.includes(key) ? prev.filter(p => p !== key) : [...prev, key]);
+  };
   const [pillarTargets, setPillarTargets] = useState(() => {
     const t = saved?.pillarTargets || {};
     if (Object.keys(t).some(k => ['save', 'bills', 'spend'].includes(k))) return t;
@@ -1787,10 +1793,10 @@ export default function FinanceApp() {
       country, mainGoal, investorProfile, saveForPicks, userName,
       salary, incomeSources, items, buckets, goals,
       snapshots, lastCheckIn, checkInStreak,
-      targetSplitPct, pillarTargets,
+      targetSplitPct, pillarTargets, collapsedPillars,
     });
   }, [lang, phase, onboardStep, country, mainGoal, investorProfile, saveForPicks, userName,
-      salary, incomeSources, items, buckets, goals, snapshots, lastCheckIn, checkInStreak, targetSplitPct, pillarTargets]);
+      salary, incomeSources, items, buckets, goals, snapshots, lastCheckIn, checkInStreak, targetSplitPct, pillarTargets, collapsedPillars]);
 
   // ==================== DERIVED ====================
   const allocated = useMemo(() => items.reduce((sum, c) => sum + (Number(c.amount) || 0), 0), [items]);
@@ -3503,10 +3509,11 @@ export default function FinanceApp() {
 
               const benchPct = Math.round((allocationBenchmark[pillarKey] || 0) * 100);
               const benchOnTrack = allocated > 0 && Math.abs(pillarPct - benchPct) < 5;
+              const isCollapsed = collapsedPillars.includes(pillarKey);
 
               return (
                 <div key={pillarKey} style={s.card}>
-                  <div style={s.pillarHeader}>
+                  <div style={{ ...s.pillarHeader, cursor: 'pointer' }} onClick={() => togglePillarCollapsed(pillarKey)} role="button" aria-expanded={!isCollapsed}>
                     <div style={s.pillarDot(pillar.color)} />
                     <div style={{ flex: 1 }}>
                       <div style={s.pillarName}>{pillar.name}</div>
@@ -3528,7 +3535,7 @@ export default function FinanceApp() {
                         </div>
                       )}
                     </div>
-                    <div style={{ textAlign: 'right', minWidth: 0 }}>
+                    <div style={{ textAlign: 'right', minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
                       <div style={s.pillarTotal}>
                         <span style={{ color: overTarget ? C.red : C.ink }}>{fmt(pillarTotal, t)}</span>
                         {targetAbs > 0 && <span style={{ color: C.inkMuted, fontWeight: 500 }}> / {fmt(targetAbs, t)}</span>}
@@ -3556,9 +3563,10 @@ export default function FinanceApp() {
                         </button>
                       )}
                     </div>
+                    <ChevronRight size={16} color={C.inkMuted} style={{ flexShrink: 0, transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)', transition: 'transform 0.2s', marginLeft: 4 }} />
                   </div>
 
-                  {pillarItems.length === 0 && (
+                  {!isCollapsed && pillarItems.length === 0 && (
                     <div style={{ paddingBottom: 4 }}>
                       <div style={{ fontSize: 11, color: C.inkMuted, marginBottom: 8, fontStyle: 'italic' }}>
                         {lang === 'en' ? 'Tap to add a starter item:' : 'Toque para adicionar um item:'}
@@ -3573,7 +3581,7 @@ export default function FinanceApp() {
                     </div>
                   )}
 
-                  {pillarItems.map(item => {
+                  {!isCollapsed && pillarItems.map(item => {
                     const isEditingItem = editingItemId === item.id;
                     const bm = getBenchmarkStatus(item, salary, country);
                     const pct = salary > 0 ? (item.amount / salary) * 100 : 0;
@@ -3707,9 +3715,11 @@ export default function FinanceApp() {
                     );
                   })}
 
-                  <button style={{ ...s.ghostBtn, marginTop: 10, border: `1px dashed ${C.line}`, borderRadius: 10, padding: '8px 14px', width: '100%', justifyContent: 'center' }} onClick={() => addItem(pillarKey)}>
-                    <Plus size={12} /> {t.allocate.addItem}
-                  </button>
+                  {!isCollapsed && (
+                    <button style={{ ...s.ghostBtn, marginTop: 10, border: `1px dashed ${C.line}`, borderRadius: 10, padding: '8px 14px', width: '100%', justifyContent: 'center' }} onClick={() => addItem(pillarKey)}>
+                      <Plus size={12} /> {t.allocate.addItem}
+                    </button>
+                  )}
                 </div>
               );
             })}
