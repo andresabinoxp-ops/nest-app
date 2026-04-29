@@ -3345,15 +3345,18 @@ export default function FinanceApp() {
               );
             })()}
 
-            {/* Money flow bar */}
+            {/* Money flow + benchmark — single unified card.
+                Replaces the prior "Money flow" (share) and "How you compare"
+                (vs typical) cards which showed the same percentages twice. */}
             {smartStep === null && (
               <div style={s.card}>
-                <div style={{ ...s.cardLabel, marginBottom: 10 }}>{t.allocate.flow}</div>
+                <div style={{ ...s.cardLabel, marginBottom: 4 }}>{t.allocate.flow}</div>
                 {allocated === 0 ? (
-                  <div style={{ fontSize: 12, color: C.inkMuted, lineHeight: 1.5 }}>{t.allocate.moneyFlowEmpty}</div>
+                  <div style={{ fontSize: 12, color: C.inkMuted, lineHeight: 1.5, marginTop: 6 }}>{t.allocate.moneyFlowEmpty}</div>
                 ) : (
                   <>
-                    <div style={{ display: 'flex', height: 14, borderRadius: 8, overflow: 'hidden', background: C.lineSoft }}>
+                    <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 12 }}>{t.allocate.benchmarkCard.sub}</div>
+                    <div style={{ display: 'flex', height: 14, borderRadius: 8, overflow: 'hidden', background: C.lineSoft, marginBottom: 14 }}>
                       {['save', 'bills', 'spend', 'debt'].map(p => {
                         const amt = pillarTotals[p] || 0;
                         if (amt === 0) return null;
@@ -3361,15 +3364,28 @@ export default function FinanceApp() {
                         return <div key={p} style={{ width: `${pct}%`, background: t.allocate.pillars[p].color }} />;
                       })}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px', marginTop: 12 }}>
-                      {['save', 'bills', 'spend', 'debt'].map(p => {
-                        const amt = pillarTotals[p] || 0;
-                        const pct = allocated > 0 ? Math.round((amt / allocated) * 100) : 0;
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {['save', 'bills', 'spend', 'debt'].map(key => {
+                        const target = allocationBenchmark[key];
+                        const current = (pillarTotals[key] || 0) / allocated;
+                        const diffPp = Math.round((current - target) * 100);
+                        const onTrack = Math.abs(diffPp) < 5;
+                        const aboveIsGood = key === 'save';
+                        const isHealthy = onTrack || (aboveIsGood ? diffPp > 0 : diffPp < 0);
+                        const healthColor = isHealthy ? C.accent : C.red;
+                        const status = onTrack ? t.allocate.benchmarkCard.on : diffPp > 0 ? t.allocate.benchmarkCard.above : t.allocate.benchmarkCard.below;
                         return (
-                          <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ width: 10, height: 10, borderRadius: 3, background: t.allocate.pillars[p].color, flexShrink: 0 }} />
-                            <span style={{ fontSize: 12, fontWeight: 500, color: C.ink, flex: 1 }}>{t.allocate.pillars[p].name}</span>
-                            <span style={{ fontSize: 11, color: C.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
+                          <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ flexShrink: 0, width: 70, fontSize: 12, fontWeight: 600, color: C.ink, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ width: 8, height: 8, borderRadius: 2, background: t.allocate.pillars[key].color, flexShrink: 0 }} />
+                              {t.allocate.pillarLabels[key]}
+                            </div>
+                            <div style={{ flex: 1, position: 'relative', height: 8, background: C.line, borderRadius: 4, overflow: 'hidden' }}>
+                              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(100, Math.round(current * 100))}%`, background: healthColor, transition: 'width 0.3s' }} />
+                              <div style={{ position: 'absolute', left: `${Math.round(target * 100)}%`, top: -2, bottom: -2, width: 2, background: C.ink, opacity: 0.4 }} />
+                            </div>
+                            <div style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: healthColor, minWidth: 36, textAlign: 'right', ...s.num }}>{Math.round(current * 100)}%</div>
+                            <div style={{ flexShrink: 0, fontSize: 10, color: C.inkMuted, minWidth: 64, textAlign: 'right' }}>{status}</div>
                           </div>
                         );
                       })}
@@ -3747,41 +3763,6 @@ export default function FinanceApp() {
                 </button>
               </div>
             )}
-
-            {/* How you compare — pillar % vs country benchmark */}
-            {allocated > 0 && (
-              <div style={{ ...s.card, marginBottom: 12 }}>
-                <div style={{ ...s.cardLabel, marginBottom: 4 }}>{t.allocate.benchmarkCard.title}</div>
-                <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 12 }}>{t.allocate.benchmarkCard.sub}</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {['save', 'bills', 'spend', 'debt'].map(key => {
-                    const target = allocationBenchmark[key];
-                    const current = (pillarTotals[key] || 0) / allocated;
-                    const diffPp = Math.round((current - target) * 100);
-                    const onTrack = Math.abs(diffPp) < 5;
-                    // Direction of preference per pillar: more is better for Save,
-                    // less is better for Bills/Spend/Debt. Healthy means on-track
-                    // or moving in the good direction.
-                    const aboveIsGood = key === 'save';
-                    const isHealthy = onTrack || (aboveIsGood ? diffPp > 0 : diffPp < 0);
-                    const healthColor = isHealthy ? C.accent : C.red;
-                    const status = onTrack ? t.allocate.benchmarkCard.on : diffPp > 0 ? t.allocate.benchmarkCard.above : t.allocate.benchmarkCard.below;
-                    return (
-                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ flexShrink: 0, width: 56, fontSize: 12, fontWeight: 600, color: C.ink }}>{t.allocate.pillarLabels[key]}</div>
-                        <div style={{ flex: 1, position: 'relative', height: 8, background: C.line, borderRadius: 4, overflow: 'hidden' }}>
-                          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(100, Math.round(current * 100))}%`, background: healthColor, transition: 'width 0.3s' }} />
-                          <div style={{ position: 'absolute', left: `${Math.round(target * 100)}%`, top: -2, bottom: -2, width: 2, background: C.ink, opacity: 0.4 }} />
-                        </div>
-                        <div style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: healthColor, minWidth: 56, textAlign: 'right', ...s.num }}>{Math.round(current * 100)}%</div>
-                        <div style={{ flexShrink: 0, fontSize: 10, color: C.inkMuted, minWidth: 64, textAlign: 'right' }}>{status}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {/* Summary + save */}
             <div style={s.card}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
