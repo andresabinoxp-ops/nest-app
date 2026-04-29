@@ -277,6 +277,7 @@ const copy = {
         close: 'Close',
       },
       fundedBy: 'Funded by Allocate',
+      feedsWealth: '→ Wealth:',
       smartCard: {
         title: 'Not sure how to split?',
         sub: '3 quick questions. Two suggested plans.',
@@ -758,6 +759,7 @@ const copy = {
         close: 'Fechar',
       },
       fundedBy: 'Vem do Alocar',
+      feedsWealth: '→ Patrimônio:',
       smartCard: {
         title: 'Não sabe como dividir sua renda?',
         sub: '3 perguntas rápidas. Dois planos sugeridos.',
@@ -3514,17 +3516,21 @@ export default function FinanceApp() {
               const pillarItems = itemsByPillar(pillarKey);
               const pillarTotal = pillarTotals[pillarKey] || 0;
               const pillarPct = allocated > 0 ? Math.round((pillarTotal / allocated) * 100) : 0;
-              const targetPct = targetSplitPct ? targetSplitPct[pillarKey] : null;
-              const diff = targetPct != null ? pillarPct - targetPct : null;
+              // Compare the pillar against the country benchmark (same source as the
+              // unified Money flow card up top), not the user's custom targetSplitPct.
+              // Otherwise the header can say "on track" while the top card says "above
+              // typical" — confusing dual standards. Status here mirrors the top card.
+              const benchPct = Math.round((allocationBenchmark[pillarKey] || 0) * 100);
+              const diff = allocated > 0 ? pillarPct - benchPct : null;
               const status = diff == null ? null : Math.abs(diff) < 5 ? 'ok' : diff > 0 ? 'over' : 'under';
-              const statusColor = status === 'ok' ? C.accent : status ? C.yellow : C.inkMuted;
+              const aboveIsGood = pillarKey === 'save';
+              const isHealthy = status === 'ok' || (aboveIsGood ? diff > 0 : diff < 0);
+              const statusColor = isHealthy ? C.accent : C.red;
+              const benchOnTrack = status === 'ok';
               const starters = (STARTER_ITEMS[lang] || STARTER_ITEMS.en)[pillarKey] || [];
               const targetAbs = Number(pillarTargets[pillarKey]) || 0;
               const isEditingTarget = editingPillarTarget === pillarKey;
               const overTarget = targetAbs > 0 && pillarTotal > targetAbs;
-
-              const benchPct = Math.round((allocationBenchmark[pillarKey] || 0) * 100);
-              const benchOnTrack = allocated > 0 && Math.abs(pillarPct - benchPct) < 5;
               const isCollapsed = collapsedPillars.includes(pillarKey);
 
               return (
@@ -3567,7 +3573,7 @@ export default function FinanceApp() {
                         <button onClick={() => setEditingPillarTarget(pillarKey)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, color: C.inkMuted, fontSize: 10, fontFamily: fontSans, marginTop: 2 }}>
                           {t.common.edit} {t.allocate.target}
                         </button>
-                      ) : targetPct != null && pillarTotal > 0 ? (
+                      ) : status != null && pillarTotal > 0 ? (
                         <div style={{ fontSize: 10, color: C.inkMuted, marginTop: 2 }}>
                           {pillarPct}% · <span style={{ color: statusColor, fontWeight: 600 }}>
                             {status === 'ok' ? t.allocate.onTrack : status === 'over' ? t.allocate.over(diff) : t.allocate.under(-diff)}
@@ -3671,6 +3677,24 @@ export default function FinanceApp() {
                                 <Target size={10} strokeWidth={2.5} />
                                 {linkedGoal ? t.allocate.link.chipLinked(linkedGoal.name) : t.allocate.link.chip}
                               </button>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Wealth feed hint — Save items get auto-routed into matching bucket
+                            types at check-in. Show which buckets will receive the contribution
+                            so the connection isn't invisible. */}
+                        {item.pillar === 'save' && Number(item.amount) > 0 && (() => {
+                          const targetTypes = { emergency: ['cash'], savings: ['cash', 'bonds'], investments: ['stocks', 'reits', 'crypto', 'bonds'] };
+                          const types = targetTypes[item.benchmarkKey] || ['cash', 'bonds', 'stocks', 'reits', 'crypto'];
+                          const matchingBuckets = buckets.filter(b => types.includes(b.type));
+                          if (matchingBuckets.length === 0) return null;
+                          const names = matchingBuckets.slice(0, 2).map(b => b.name).join(', ');
+                          const more = matchingBuckets.length > 2 ? ` +${matchingBuckets.length - 2}` : '';
+                          return (
+                            <div style={{ marginTop: 4, paddingLeft: 36, fontSize: 10, color: C.inkMuted, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <TrendingUp size={9} strokeWidth={2.5} />
+                              {t.allocate.feedsWealth} {names}{more}
                             </div>
                           );
                         })()}
