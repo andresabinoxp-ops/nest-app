@@ -174,7 +174,7 @@ const copy = {
       surplusTitle: 'You have unassigned money',
       surplusBody: (amt) => `${amt} is still unassigned. Where should it go?`,
       surplusKeep: 'Save as is',
-      surplusSplit: 'Split across Wealth',
+      surplusSplit: 'Split across Save',
       sendTo: (name) => `Send to ${name}`,
       replaceTitle: 'Replace your current plan?',
       replaceBody: 'Items stay; only the amounts change to follow the recommended pillar shares.',
@@ -656,7 +656,7 @@ const copy = {
       surplusTitle: 'Você ainda tem dinheiro sobrando',
       surplusBody: (amt) => `${amt} ainda não foi alocado. Onde colocar?`,
       surplusKeep: 'Salvar mesmo assim',
-      surplusSplit: 'Dividir no Patrimônio',
+      surplusSplit: 'Dividir no Guardar',
       sendTo: (name) => `Mandar pra ${name}`,
       replaceTitle: 'Substituir seu plano atual?',
       replaceBody: 'Os itens continuam; apenas os valores mudam pra seguir as proporções recomendadas.',
@@ -1806,12 +1806,6 @@ export default function FinanceApp() {
   const totalWealth = useMemo(() => buckets.reduce((sum, b) => sum + (Number(b.current) || 0), 0), [buckets]);
   const monthlyContrib = useMemo(() => buckets.reduce((sum, b) => sum + (Number(b.monthly) || 0), 0), [buckets]);
 
-  // Monthly contribution from Allocate's Wealth pillar (auto-computed)
-  const wealthFromAllocate = useMemo(() =>
-    items.filter(i => i.pillar === 'wealth').reduce((sum, i) => sum + (Number(i.amount) || 0), 0),
-    [items]
-  );
-
   // Pillar totals
   const pillarTotals = useMemo(() => {
     const out = { save: 0, bills: 0, spend: 0, debt: 0 };
@@ -2146,10 +2140,10 @@ export default function FinanceApp() {
   };
   const splitSurplusAcrossWealth = () => {
     if (unassigned <= 0) return;
-    const wealthItems = items.filter(i => i.pillar === 'wealth');
-    if (wealthItems.length === 0) return;
-    const share = unassigned / wealthItems.length;
-    setItems(items.map(i => i.pillar === 'wealth' ? { ...i, amount: (Number(i.amount) || 0) + share } : i));
+    const saveItems = items.filter(i => i.pillar === 'save');
+    if (saveItems.length === 0) return;
+    const share = unassigned / saveItems.length;
+    setItems(items.map(i => i.pillar === 'save' ? { ...i, amount: (Number(i.amount) || 0) + share } : i));
     setSurplusRedirectOpen(false);
   };
 
@@ -2216,37 +2210,38 @@ export default function FinanceApp() {
     // Open the Month Review sheet with deltas, goal pace, drift, and benchmark callouts.
     setReviewOpen(true);
 
-    // Smart Allocate→Wealth feed: map wealth items to matching buckets by type
-    // Emergency fund → cash buckets · Savings → cash/bonds · Investments → stocks/reits/crypto
-    const wealthItems = items.filter(i => i.pillar === 'wealth' && Number(i.amount) > 0);
-    if (wealthItems.length > 0 && buckets.length > 0) {
-      // Classify each wealth item by benchmarkKey
+    // Allocate→Wealth feed: at check-in, route Save-pillar items into matching
+    // Wealth buckets and update each bucket's `monthly` field (the planned
+    // contribution that drives Forecast). The bucket's `current` (actual
+    // balance) is intentionally NOT touched — that stays a manual update so
+    // Wealth keeps reflecting what's really in your accounts.
+    // Mapping: Emergency fund → cash · Savings → cash/bonds · Investments →
+    // stocks/reits/crypto/bonds. Items without a benchmarkKey default to
+    // savings.
+    const saveItems = items.filter(i => i.pillar === 'save' && Number(i.amount) > 0);
+    if (saveItems.length > 0 && buckets.length > 0) {
       const contribByBenchmark = { emergency: 0, savings: 0, investments: 0 };
-      wealthItems.forEach(i => {
+      saveItems.forEach(i => {
         const key = i.benchmarkKey || 'savings';
         if (contribByBenchmark[key] !== undefined) contribByBenchmark[key] += Number(i.amount);
         else contribByBenchmark.savings += Number(i.amount);
       });
 
-      // Target bucket types for each wealth item type
       const targetTypes = {
         emergency: ['cash'],
         savings: ['cash', 'bonds'],
         investments: ['stocks', 'reits', 'crypto', 'bonds'],
       };
 
-      // Build new bucket monthly values
       const newBuckets = buckets.map(b => ({ ...b, monthly: 0 }));
 
       Object.entries(contribByBenchmark).forEach(([key, total]) => {
         if (total <= 0) return;
         const matches = newBuckets.filter(b => targetTypes[key].includes(b.type));
         if (matches.length === 0) {
-          // No matching bucket type — spread across all as fallback
           const share = total / newBuckets.length;
           newBuckets.forEach(b => { b.monthly += share; });
         } else {
-          // Distribute by existing bucket value weight, or equally if all zero
           const totalCurrent = matches.reduce((s, b) => s + Number(b.current || 0), 0);
           matches.forEach(b => {
             const weight = totalCurrent > 0 ? (Number(b.current || 0) / totalCurrent) : (1 / matches.length);
@@ -2255,7 +2250,6 @@ export default function FinanceApp() {
         }
       });
 
-      // Round and commit
       newBuckets.forEach(b => { b.monthly = Math.round(b.monthly); });
       setBuckets(newBuckets);
     }
@@ -3812,7 +3806,7 @@ export default function FinanceApp() {
               const candidates = ['emergency', 'investments', 'savings']
                 .map(key => ({ key, item: items.find(i => i.benchmarkKey === key) }))
                 .filter(x => x.item);
-              const wealthItemsExist = items.some(i => i.pillar === 'wealth');
+              const wealthItemsExist = items.some(i => i.pillar === 'save');
               return (
                 <div onClick={() => setSurplusRedirectOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
                   <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 440, background: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)' }}>
